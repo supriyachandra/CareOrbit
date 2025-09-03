@@ -1,0 +1,1164 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Dashboard - CareOrbit{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
+                    <p class="text-gray-600">Welcome, {{ doctor_info.name if doctor_info else session.username }} - {{ doctor_info.department if doctor_info else 'Department' }}</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="showPastPatients()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                        <i class="fas fa-history mr-2"></i>Past Patients
+                    </button>
+                    <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        <i class="fas fa-users text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Today's Patients</p>
+                        <p class="text-2xl font-bold text-gray-900" id="todayPatientsCount">{{ patients|length }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        <i class="fas fa-check-circle text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Completed</p>
+                        <p class="text-2xl font-bold text-gray-900" id="completedCount">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                        <i class="fas fa-clock text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Pending</p>
+                        <p class="text-2xl font-bold text-gray-900" id="pendingCount">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                        <i class="fas fa-stethoscope text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">In Progress</p>
+                        <p class="text-2xl font-bold text-gray-900" id="inProgressCount">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patients Table -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-900">Today's Assigned Patients</h2>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="patientFilterInput" placeholder="Filter patients..." 
+                               class="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-48"
+                               onkeyup="filterPatients()">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                {% if patients %}
+                <table class="min-w-full divide-y divide-gray-200" id="patientsTable">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient Info</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visit Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for patient in patients %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10">
+                                        <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                            <i class="fas fa-user text-blue-600"></i>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">{{ patient.patient_details.name }}</div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ patient.patient_details.age }} years • {{ patient.patient_details.gender }}
+                                        </div>
+                                        <div class="text-xs text-gray-400">ID: {{ patient.patient_details.patient_id }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ patient.patient_details.contact_number }}</div>
+                                <div class="text-sm text-gray-500">{{ patient.patient_details.address[:30] }}...</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ patient.visit_date.strftime('%I:%M %p') }}</div>
+                                <div class="text-sm text-gray-500">{{ patient.visit_date.strftime('%b %d, %Y') }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ patient.reason_for_visit }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                    {% if patient.status == 'completed' %}bg-green-100 text-green-800
+                                    {% elif patient.status == 'in_progress' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-blue-100 text-blue-800{% endif %}">
+                                    {{ patient.status.replace('_', ' ').title() }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex space-x-2">
+                                    <!-- Added View History button for all patients -->
+                                    <button onclick="viewPatientHistory('{{ patient.patient_details._id }}', '{{ patient.patient_details.name }}')"
+                                            class="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                                        <i class="fas fa-history mr-1"></i>History
+                                    </button>
+                                    {% if patient.status == 'completed' %}
+                                        <span class="text-sm text-gray-500 italic">Completed</span>
+                                    {% else %}
+                                        <button onclick="openPrescriptionModal('{{ patient._id }}', '{{ patient.patient_details.name }}', '{{ patient.patient_details.patient_id }}', '{{ patient.patient_details.age }}', '{{ patient.patient_details.gender }}', '{{ patient.patient_details.allergies or "None" }}', '{{ patient.patient_details.chronic_conditions or "None" }}')"
+                                                class="inline-flex items-center px-3 py-1 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors">
+                                            <i class="fas fa-prescription-bottle-alt mr-1"></i>Prescribe
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center py-12">
+                    <i class="fas fa-user-md text-4xl text-gray-400 mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No Patients Today</h3>
+                    <p class="text-gray-500">You don't have any patients assigned for today.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Prescription Modal -->
+<div id="prescriptionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-screen overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h3 id="modalTitle" class="text-lg font-semibold text-gray-900">Add Prescription</h3>
+                    <button onclick="closePrescriptionModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <div id="modalPatientInfo" class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <!-- Patient info will be populated here -->
+                </div>
+                
+                <!-- Only keeping the general mode content, removing follow-up mode -->
+                <div id="generalModeContent">
+                    <form id="prescriptionForm" class="space-y-6">
+                        <input type="hidden" id="visitId">
+                        <input type="hidden" id="isEditing" value="false">
+                        <input type="hidden" id="currentPatientId">
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Symptoms</label>
+                                <textarea id="symptoms" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Describe patient symptoms..."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Diagnosis</label>
+                                <textarea id="diagnosis" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter diagnosis..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Medications</label>
+                            <textarea id="medications" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="List medications with dosage and frequency..."></textarea>
+                        </div>
+
+                        <!-- Enhanced medical tests section with multiple selection -->
+                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                            <h4 class="text-md font-medium text-gray-900 mb-3">Medical Tests (Optional)</h4>
+                            <div class="grid md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Test Category</label>
+                                    <select id="testCategory" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="updateTestOptions()">
+                                        <option value="">Select Category</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Test Name</label>
+                                    <select id="testName" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" disabled>
+                                        <option value="">Select Test</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Custom Test Name (if not in list)</label>
+                                <input type="text" id="customTestName" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter custom test name...">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Test Instructions</label>
+                                <textarea id="testInstructions" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Instructions for the test..."></textarea>
+                            </div>
+                            <button type="button" onclick="addTestToList()" class="px-3 py-1 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700">
+                                <i class="fas fa-plus mr-1"></i>Add Test
+                            </button>
+                            <div id="addedTestsList" class="mt-3 space-y-2"></div>
+                        </div>
+
+                        <!-- Added file upload section for images/PDFs -->
+                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                            <h4 class="text-md font-medium text-gray-900 mb-3">Attachments (Optional)</h4>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Upload Images or PDFs</label>
+                                <input type="file" id="prescriptionFiles" multiple accept=".pdf,.jpg,.jpeg,.png,.gif" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">Supported: PDF, JPG, PNG, GIF (Max 10MB per file)</p>
+                            </div>
+                            <div id="uploadedFilesList" class="space-y-2"></div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Instructions</label>
+                            <textarea id="instructions" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Additional instructions for patient..."></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Follow-up Date (Optional)</label>
+                            <input type="date" id="followUpDate" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div class="flex justify-end space-x-4">
+                            <button type="button" onclick="closePrescriptionModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                Cancel
+                            </button>
+                            <button type="submit" id="savePrescriptionBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-save mr-2"></i>Save Prescription
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Patient History Modal with comprehensive patient data -->
+<!-- Patient History Modal -->
+<div id="patientHistoryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-screen overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h3 id="patientHistoryTitle" class="text-lg font-semibold text-gray-900">Patient Medical History</h3>
+                    <button onclick="closePatientHistoryModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <!-- Patient Summary Card -->
+                <div id="patientSummaryCard" class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="h-16 w-16 rounded-full bg-purple-100 flex items-center justify-center">
+                                <i class="fas fa-user text-purple-600 text-2xl"></i>
+                            </div>
+                            <div id="patientSummaryInfo">
+                                <!-- Patient info will be populated here -->
+                            </div>
+                        </div>
+                        <div id="patientStats" class="text-right">
+                            <!-- Patient statistics will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter and Search -->
+                <div class="flex flex-wrap gap-4 mb-6">
+                    <div class="flex-1 min-w-64">
+                        <input type="text" id="historySearch" placeholder="Search visits, diagnoses, medications..." 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                               onkeyup="filterHistory()">
+                    </div>
+                    <select id="historyFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" onchange="filterHistory()">
+                        <option value="all">All Visits</option>
+                        <option value="completed">Completed</option>
+                        <option value="pending">Pending</option>
+                        <option value="assigned">Assigned</option>
+                    </select>
+                    <select id="dateFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" onchange="filterHistory()">
+                        <option value="all">All Time</option>
+                        <option value="30">Last 30 Days</option>
+                        <option value="90">Last 3 Months</option>
+                        <option value="365">Last Year</option>
+                    </select>
+                </div>
+
+                <!-- History Content -->
+                <div id="patientHistoryContent" class="space-y-4">
+                    <div class="text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-500">Loading patient history...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Past Patients Modal -->
+<div id="pastPatientsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-screen overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-900">Past Patients (Last 30 Days)</h3>
+                    <button onclick="closePastPatientsModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="pastPatientsContent" class="p-6">
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-500">Loading past patients...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Global variables
+var testTypes = [];
+var currentVisitId = null;
+var currentPatientId = null;
+var pendingTests = [];
+var uploadedFiles = [];
+
+
+var testTypes = [
+    {
+        category: 'Blood Tests',
+        tests: [
+            'Complete Blood Count (CBC)',
+            'Basic Metabolic Panel (BMP)',
+            'Comprehensive Metabolic Panel (CMP)',
+            'Lipid Panel',
+            'Liver Function Tests (LFT)',
+            'Kidney Function Tests',
+            'Thyroid Function Tests (TSH, T3, T4)',
+            'Hemoglobin A1C',
+            'Fasting Blood Sugar',
+            'Random Blood Sugar',
+            'Vitamin D',
+            'Vitamin B12',
+            'Iron Studies',
+            'Coagulation Studies (PT/INR, PTT)',
+            'Inflammatory Markers (ESR, CRP)',
+            'Cardiac Enzymes (Troponin, CK-MB)',
+            'Tumor Markers'
+        ]
+    },
+    {
+        category: 'Imaging',
+        tests: [
+            'X-Ray Chest',
+            'X-Ray Abdomen',
+            'X-Ray Bone/Joint',
+            'CT Scan Head',
+            'CT Scan Chest',
+            'CT Scan Abdomen/Pelvis',
+            'MRI Brain',
+            'MRI Spine',
+            'MRI Joint',
+            'Ultrasound Abdomen',
+            'Ultrasound Pelvis',
+            'Ultrasound Thyroid',
+            'Echocardiogram',
+            'Mammography',
+            'DEXA Scan',
+            'PET Scan'
+        ]
+    },
+    {
+        category: 'Cardiac Tests',
+        tests: [
+            'ECG/EKG',
+            'Stress Test',
+            'Holter Monitor',
+            'Event Monitor',
+            'Echocardiogram',
+            'Cardiac Catheterization',
+            'Nuclear Stress Test'
+        ]
+    },
+    {
+        category: 'Pulmonary Tests',
+        tests: [
+            'Pulmonary Function Test (PFT)',
+            'Chest X-Ray',
+            'CT Chest',
+            'Arterial Blood Gas (ABG)',
+            'Sleep Study',
+            'Bronchoscopy'
+        ]
+    },
+    {
+        category: 'Urine Tests',
+        tests: [
+            'Urinalysis',
+            'Urine Culture',
+            '24-Hour Urine Collection',
+            'Urine Protein',
+            'Urine Microalbumin',
+            'Drug Screen'
+        ]
+    },
+    {
+        category: 'Microbiology',
+        tests: [
+            'Blood Culture',
+            'Urine Culture',
+            'Sputum Culture',
+            'Wound Culture',
+            'Stool Culture',
+            'Throat Culture',
+            'Hepatitis Panel',
+            'HIV Test',
+            'COVID-19 Test'
+        ]
+    },
+    {
+        category: 'Endocrine Tests',
+        tests: [
+            'Glucose Tolerance Test',
+            'Insulin Level',
+            'Cortisol Level',
+            'Growth Hormone',
+            'Parathyroid Hormone (PTH)',
+            'Testosterone',
+            'Estrogen',
+            'Progesterone'
+        ]
+    },
+    {
+        category: 'Neurological Tests',
+        tests: [
+            'EEG',
+            'EMG',
+            'Nerve Conduction Study',
+            'Lumbar Puncture',
+            'MRI Brain',
+            'CT Head'
+        ]
+    }
+];
+
+function handleFileUpload() {
+    var fileInput = document.getElementById('prescriptionFiles');
+    var files = fileInput.files;
+    
+    for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            alert('File ' + file.name + ' is too large. Maximum size is 10MB.');
+            continue;
+        }
+        
+        uploadedFiles.push({
+            file: file,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            id: Date.now() + i
+        });
+    }
+    
+    updateUploadedFilesList();
+    fileInput.value = ''; // Clear the input
+}
+
+function updateUploadedFilesList() {
+    var container = document.getElementById('uploadedFilesList');
+    if (uploadedFiles.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    var html = '<div class="text-sm font-medium text-gray-700 mb-2">Uploaded Files:</div>';
+    for (var i = 0; i < uploadedFiles.length; i++) {
+        var file = uploadedFiles[i];
+        var fileSize = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+        var fileIcon = file.type.includes('pdf') ? 'fa-file-pdf text-red-500' : 'fa-image text-blue-500';
+        
+        html += 
+            '<div class="flex justify-between items-center bg-white border rounded p-2">' +
+                '<div class="flex items-center space-x-2">' +
+                    '<i class="fas ' + fileIcon + '"></i>' +
+                    '<span class="font-medium">' + file.name + '</span>' +
+                    '<span class="text-gray-500 text-sm">(' + fileSize + ')</span>' +
+                '</div>' +
+                '<button onclick="removeUploadedFile(' + i + ')" class="text-red-600 hover:text-red-800 text-sm">' +
+                    '<i class="fas fa-times"></i>' +
+                '</button>' +
+            '</div>';
+    }
+    container.innerHTML = html;
+}
+
+function removeUploadedFile(index) {
+    uploadedFiles.splice(index, 1);
+    updateUploadedFilesList();
+}
+
+// Add event listener for file input
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('prescriptionFiles').addEventListener('change', handleFileUpload);
+});
+
+function openPrescriptionModal(visitId, patientName, patientId, patientAge, patientGender, patientAllergies, patientChronic) {
+    currentVisitId = visitId;
+    currentPatientId = patientId;
+    
+    document.getElementById('modalPatientInfo').innerHTML = 
+        '<div class="grid md:grid-cols-2 gap-4">' +
+            '<div>' +
+                '<h4 class="font-semibold text-gray-800 mb-2">Patient Information</h4>' +
+                '<p><span class="font-medium">Name:</span> ' + patientName + '</p>' +
+                '<p><span class="font-medium">ID:</span> ' + patientId + '</p>' +
+                '<p><span class="font-medium">Age:</span> ' + patientAge + ' years</p>' +
+                '<p><span class="font-medium">Gender:</span> ' + patientGender + '</p>' +
+            '</div>' +
+            '<div>' +
+                '<h4 class="font-semibold text-gray-800 mb-2">Medical History</h4>' +
+                '<p><span class="font-medium">Allergies:</span> <span class="text-red-600">' + patientAllergies + '</span></p>' +
+                '<p><span class="font-medium">Chronic Conditions:</span> ' + patientChronic + '</p>' +
+                '<div class="mt-3 flex justify-end">' +
+                    '<button onclick="viewPatientHistory(\'' + patientId + '\', \'' + patientName + '\')" ' +
+                            'class="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors">' +
+                        '<i class="fas fa-history mr-2"></i>Visit Past Records' +
+                    '</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+
+    document.getElementById('visitId').value = visitId;
+    document.getElementById('currentPatientId').value = patientId;
+    
+    document.getElementById('prescriptionForm').reset();
+    document.getElementById('visitId').value = visitId;
+    document.getElementById('currentPatientId').value = patientId;
+    
+    pendingTests = [];
+    document.getElementById('addedTestsList').innerHTML = '';
+    uploadedFiles = [];
+    document.getElementById('uploadedFilesList').innerHTML = '';
+    
+    var tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('followUpDate').min = tomorrow.toISOString().split('T')[0];
+    
+    loadTestTypes();
+    document.getElementById('prescriptionModal').classList.remove('hidden');
+}
+
+function closePrescriptionModal() {
+    document.getElementById('prescriptionModal').classList.add('hidden');
+    currentVisitId = null;
+    currentPatientId = null;
+    pendingTests = [];
+    uploadedFiles = [];
+}
+
+var allHistoryData = []; // Store all history data for filtering
+
+function viewPatientHistory(patientId, patientName) {
+    document.getElementById('patientHistoryModal').classList.remove('hidden');
+    document.getElementById('patientHistoryTitle').textContent = patientName + ' - Complete Medical History';
+    
+    // Reset filters
+    document.getElementById('historySearch').value = '';
+    document.getElementById('historyFilter').value = 'all';
+    document.getElementById('dateFilter').value = 'all';
+    
+    // Show loading state
+    document.getElementById('patientHistoryContent').innerHTML = 
+        '<div class="text-center py-8">' +
+            '<i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-4"></i>' +
+            '<p class="text-gray-500">Loading patient history...</p>' +
+        '</div>';
+    
+    // Load comprehensive patient data with better error handling
+    Promise.all([
+        fetch('/api/patient/' + patientId + '/history').then(function(response) {
+            if (!response.ok) throw new Error('Failed to load history');
+            return response.json();
+        }),
+        fetch('/api/patient/summary/' + patientId).then(function(response) {
+            if (!response.ok) throw new Error('Failed to load summary');
+            return response.json();
+        })
+    ])
+    .then(function(data) {
+        var historyData = data[0];
+        var summaryData = data[1];
+        
+        if (historyData.success && summaryData.success) {
+            allHistoryData = historyData.history || historyData.visits || [];
+            displayPatientSummary(summaryData.patient);
+            displayComprehensiveHistory(allHistoryData);
+        } else {
+            throw new Error(historyData.message || summaryData.message || 'Failed to load data');
+        }
+    })
+    .catch(function(error) {
+        console.error('Error loading patient history:', error);
+        document.getElementById('patientHistoryContent').innerHTML = 
+            '<div class="text-center py-12">' +
+                '<i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>' +
+                '<h3 class="text-lg font-medium text-gray-900 mb-2">Error Loading History</h3>' +
+                '<p class="text-gray-500">Unable to load patient medical history: ' + error.message + '</p>' +
+                '<button onclick="viewPatientHistory(\'' + patientId + '\', \'' + patientName + '\')" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">' +
+                    '<i class="fas fa-refresh mr-2"></i>Retry' +
+                '</button>' +
+            '</div>';
+    });
+}
+
+function displayPatientSummary(patient) {
+    document.getElementById('patientSummaryInfo').innerHTML = 
+        '<div>' +
+            '<h4 class="text-xl font-bold text-gray-900">' + patient.name + '</h4>' +
+            '<p class="text-gray-600">ID: ' + patient.patient_id + ' • Age: ' + patient.age + ' • ' + patient.gender + '</p>' +
+            '<div class="mt-2 flex flex-wrap gap-2">' +
+                (patient.allergies && patient.allergies !== 'None' ? '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">⚠️ Allergies: ' + patient.allergies + '</span>' : '') +
+                (patient.chronic_conditions && patient.chronic_conditions !== 'None' ? '<span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">🩺 Chronic: ' + patient.chronic_conditions + '</span>' : '') +
+            '</div>' +
+        '</div>';
+    
+    document.getElementById('patientStats').innerHTML = 
+        '<div class="space-y-1">' +
+            '<div class="text-sm text-gray-600">Total Visits: <span class="font-semibold text-purple-600">' + (patient.total_visits || 0) + '</span></div>' +
+            '<div class="text-sm text-gray-600">Last Visit: <span class="font-semibold">' + (patient.last_visit || 'Never') + '</span></div>' +
+            '<div class="text-sm text-gray-600">Active Medications: <span class="font-semibold text-green-600">' + (patient.active_medications || 0) + '</span></div>' +
+        '</div>';
+}
+
+function displayComprehensiveHistory(history) {
+    var content = document.getElementById('patientHistoryContent');
+    
+    if (history.length === 0) {
+        content.innerHTML = 
+            '<div class="text-center py-12">' +
+                '<i class="fas fa-file-medical text-4xl text-gray-400 mb-4"></i>' +
+                '<h3 class="text-lg font-medium text-gray-900 mb-2">No Medical History</h3>' +
+                '<p class="text-gray-500">This patient has no recorded visits</p>' +
+            '</div>';
+        return;
+    }
+    
+    var historyHtml = '<div class="space-y-6">';
+    
+    for (var i = 0; i < history.length; i++) {
+        var visit = history[i];
+        var statusClass = getStatusClass(visit.status);
+        var visitDate = new Date(visit.visit_date);
+        var isValidDate = !isNaN(visitDate.getTime());
+        
+        historyHtml += 
+            '<div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">' +
+                '<div class="flex justify-between items-start mb-4">' +
+                    '<div class="flex-1">' +
+                        '<div class="flex items-center space-x-3 mb-2">' +
+                            '<h4 class="text-lg font-semibold text-gray-900">' + (visit.doctor_name || 'Unknown Doctor') + '</h4>' +
+                            '<span class="px-2 py-1 text-xs font-medium rounded-full ' + statusClass + '">' + 
+                                (visit.status ? visit.status.replace('_', ' ').toUpperCase() : 'UNKNOWN') + 
+                            '</span>' +
+                        '</div>' +
+                        '<div class="text-sm text-gray-600 mb-1">' +
+                            '<i class="fas fa-building mr-2"></i>' + (visit.department_name || 'Unknown Department') +
+                        '</div>' +
+                        '<div class="text-sm text-gray-500">' +
+                            '<i class="fas fa-calendar mr-2"></i>' + 
+                            (isValidDate ? visitDate.toLocaleDateString() + ' at ' + visitDate.toLocaleTimeString() : 'Date not available') +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                
+                '<div class="grid md:grid-cols-2 gap-6">' +
+                    '<div class="space-y-4">' +
+                        (visit.reason_for_visit ? 
+                            '<div>' +
+                                '<h5 class="font-medium text-gray-900 mb-2">Chief Complaint</h5>' +
+                                '<p class="text-sm text-gray-700 bg-blue-50 p-3 rounded-lg">' + visit.reason_for_visit + '</p>' +
+                            '</div>' : '') +
+                        
+                        (visit.symptoms ? 
+                            '<div>' +
+                                '<h5 class="font-medium text-gray-900 mb-2">Symptoms</h5>' +
+                                '<p class="text-sm text-gray-700 bg-yellow-50 p-3 rounded-lg">' + visit.symptoms + '</p>' +
+                            '</div>' : '') +
+                        
+                        (visit.diagnosis ? 
+                            '<div>' +
+                                '<h5 class="font-medium text-gray-900 mb-2">Diagnosis</h5>' +
+                                '<p class="text-sm text-gray-700 bg-green-50 p-3 rounded-lg font-medium">' + visit.diagnosis + '</p>' +
+                            '</div>' : '') +
+                    '</div>' +
+                    
+                    '<div class="space-y-4">' +
+                        (visit.medications ? 
+                            '<div>' +
+                                '<h5 class="font-medium text-gray-900 mb-2">Medications Prescribed</h5>' +
+                                '<div class="text-sm text-gray-700 bg-purple-50 p-3 rounded-lg">' +
+                                    '<pre class="whitespace-pre-wrap font-sans">' + visit.medications + '</pre>' +
+                                '</div>' +
+                            '</div>' : '') +
+                        
+                        (visit.instructions ? 
+                            '<div>' +
+                                '<h5 class="font-medium text-gray-900 mb-2">Instructions</h5>' +
+                                '<p class="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">' + visit.instructions + '</p>' +
+                            '</div>' : '') +
+                        
+                        (visit.follow_up_date ? 
+                            '<div>' +
+                                '<h5 class="font-medium text-gray-900 mb-2">Follow-up</h5>' +
+                                '<p class="text-sm text-gray-700 bg-orange-50 p-3 rounded-lg">' +
+                                    '<i class="fas fa-calendar-check mr-2"></i>' + new Date(visit.follow_up_date).toLocaleDateString() +
+                                '</p>' +
+                            '</div>' : '') +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+    }
+    
+    historyHtml += '</div>';
+    content.innerHTML = historyHtml;
+}
+
+function getStatusClass(status) {
+    switch(status) {
+        case 'completed':
+            return 'bg-green-100 text-green-800';
+        case 'in_progress':
+            return 'bg-yellow-100 text-yellow-800';
+        case 'assigned':
+            return 'bg-blue-100 text-blue-800';
+        case 'pending':
+            return 'bg-orange-100 text-orange-800';
+        default:
+            return 'bg-gray-100 text-gray-800';
+    }
+}
+
+function closePatientHistoryModal() {
+    document.getElementById('patientHistoryModal').classList.add('hidden');
+    allHistoryData = [];
+}
+
+function filterHistory() {
+    var searchTerm = document.getElementById('historySearch').value.toLowerCase();
+    var statusFilter = document.getElementById('historyFilter').value;
+    var dateFilter = parseInt(document.getElementById('dateFilter').value);
+    
+    var filteredHistory = allHistoryData.filter(function(visit) {
+        // Text search
+        var matchesSearch = !searchTerm || 
+            (visit.doctor_name && visit.doctor_name.toLowerCase().includes(searchTerm)) ||
+            (visit.department_name && visit.department_name.toLowerCase().includes(searchTerm)) ||
+            (visit.diagnosis && visit.diagnosis.toLowerCase().includes(searchTerm)) ||
+            (visit.medications && visit.medications.toLowerCase().includes(searchTerm)) ||
+            (visit.symptoms && visit.symptoms.toLowerCase().includes(searchTerm)) ||
+            (visit.reason_for_visit && visit.reason_for_visit.toLowerCase().includes(searchTerm));
+        
+        // Status filter
+        var matchesStatus = statusFilter === 'all' || visit.status === statusFilter;
+        
+        // Date filter
+        var matchesDate = true;
+        if (dateFilter && !isNaN(dateFilter)) {
+            var visitDate = new Date(visit.visit_date);
+            var cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - dateFilter);
+            matchesDate = visitDate >= cutoffDate;
+        }
+        
+        return matchesSearch && matchesStatus && matchesDate;
+    });
+    
+    displayComprehensiveHistory(filteredHistory);
+}
+
+function logout() {
+    fetch('/api/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            window.location.href = '/';
+        }
+    })
+    .catch(function(error) {
+        alert('Error logging out');
+    });
+}
+
+function showPastPatients() {
+    document.getElementById('pastPatientsModal').classList.remove('hidden');
+    
+    fetch('/api/doctor/past-patients')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var patientsHtml = '';
+                
+                if (data.past_patients.length > 0) {
+                    patientsHtml = 
+                        '<div class="overflow-x-auto">' +
+                            '<table class="min-w-full divide-y divide-gray-200">' +
+                                '<thead class="bg-gray-50">' +
+                                    '<tr>' +
+                                        '<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient Info</th>' +
+                                        '<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visit Date</th>' +
+                                        '<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Diagnosis</th>' +
+                                        '<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medications</th>' +
+                                        '<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Follow-up</th>' +
+                                    '</tr>' +
+                                '</thead>' +
+                                '<tbody class="bg-white divide-y divide-gray-200">';
+                    
+                    for (var i = 0; i < data.past_patients.length; i++) {
+                        var patient = data.past_patients[i];
+                        patientsHtml += 
+                            '<tr class="hover:bg-gray-50">' +
+                                '<td class="px-6 py-4 whitespace-nowrap">' +
+                                    '<div class="flex items-center">' +
+                                        '<div class="flex-shrink-0 h-10 w-10">' +
+                                            '<div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">' +
+                                                '<i class="fas fa-user text-purple-600"></i>' +
+                                            '</div>' +
+                                        '</div>' +
+                                        '<div class="ml-4">' +
+                                            '<div class="text-sm font-medium text-gray-900">' + patient.name + '</div>' +
+                                            '<div class="text-sm text-gray-500">' + patient.age + ' years • ' + patient.gender + '</div>' +
+                                            '<div class="text-xs text-gray-400">ID: ' + patient.patient_id + '</div>' +
+                                        '</div>' +
+                                    '</div>' +
+                                '</td>' +
+                                '<td class="px-6 py-4 whitespace-nowrap">' +
+                                    '<div class="text-sm text-gray-900">' + new Date(patient.visit_date).toLocaleDateString() + '</div>' +
+                                    '<div class="text-sm text-gray-500">' + new Date(patient.visit_date).toLocaleTimeString() + '</div>' +
+                                '</td>' +
+                                '<td class="px-6 py-4">' +
+                                    '<div class="text-sm text-gray-900">' + (patient.diagnosis || 'Not specified') + '</div>' +
+                                    '<div class="text-xs text-gray-500">' + (patient.symptoms ? 'Symptoms: ' + patient.symptoms.substring(0, 50) + '...' : '') + '</div>' +
+                                '</td>' +
+                                '<td class="px-6 py-4">' +
+                                    '<div class="text-sm text-gray-900">' + (patient.medications || 'None prescribed') + '</div>' +
+                                '</td>' +
+                                '<td class="px-6 py-4 whitespace-nowrap">' +
+                                    '<div class="text-sm text-gray-900">' + (patient.follow_up_date || 'None scheduled') + '</div>' +
+                                '</td>' +
+                            '</tr>';
+                    }
+                    
+                    patientsHtml += '</tbody></table></div>';
+                } else {
+                    patientsHtml = 
+                        '<div class="text-center py-12">' +
+                            '<i class="fas fa-user-clock text-4xl text-gray-400 mb-4"></i>' +
+                            '<h3 class="text-lg font-medium text-gray-900 mb-2">No Past Patients</h3>' +
+                            '<p class="text-gray-500">You haven\'t prescribed any patients in the last 30 days.</p>' +
+                        '</div>';
+                }
+                
+                document.getElementById('pastPatientsContent').innerHTML = patientsHtml;
+            } else {
+                document.getElementById('pastPatientsContent').innerHTML = 
+                    '<div class="text-center py-12">' +
+                        '<i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>' +
+                        '<h3 class="text-lg font-medium text-gray-900 mb-2">Error Loading Data</h3>' +
+                        '<p class="text-gray-500">' + (data.message || 'Failed to load past patients') + '</p>' +
+                    '</div>';
+            }
+        })
+        .catch(function(error) {
+            document.getElementById('pastPatientsContent').innerHTML = 
+                '<div class="text-center py-12">' +
+                    '<i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>' +
+                    '<h3 class="text-lg font-medium text-gray-900 mb-2">Connection Error</h3>' +
+                    '<p class="text-gray-500">Unable to load past patients data</p>' +
+                '</div>';
+        });
+}
+
+function closePastPatientsModal() {
+    document.getElementById('pastPatientsModal').classList.add('hidden');
+}
+
+function updateDemographics() {
+    var completedCount = 0;
+    var pendingCount = 0;
+    
+    document.getElementById('completedCount').textContent = completedCount;
+    document.getElementById('pendingCount').textContent = pendingCount;
+}
+
+function filterPatients() {
+    var filter = document.getElementById('patientFilterInput').value.toUpperCase();
+    var table = document.getElementById('patientsTable');
+    if (table) {
+        var tr = table.getElementsByTagName('tr');
+        
+        for (var i = 1; i < tr.length; i++) {
+            var td = tr[i].getElementsByTagName('td')[0];
+            if (td) {
+                var txtValue = td.textContent || td.innerText;
+                tr[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? '' : 'none';
+            }
+        }
+    }
+}
+
+function saveAllTests(visitId) {
+    var promises = pendingTests.map(function(test) {
+        return fetch('/api/tests/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                visit_id: visitId,
+                test_name: test.name,
+                test_type: test.category,
+                instructions: test.instructions
+            })
+        });
+    });
+    
+    return Promise.all(promises);
+}
+
+document.getElementById('prescriptionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var visitId = document.getElementById('visitId').value;
+    var symptoms = document.getElementById('symptoms').value;
+    var diagnosis = document.getElementById('diagnosis').value;
+    var medications = document.getElementById('medications').value;
+    var instructions = document.getElementById('instructions').value;
+    var followUpDate = document.getElementById('followUpDate').value;
+    
+    if (!symptoms.trim() && !diagnosis.trim() && !medications.trim()) {
+        alert('Please fill in at least one field');
+        return;
+    }
+    
+    var prescriptionData = {
+        visit_id: visitId,
+        symptoms: symptoms,
+        diagnosis: diagnosis,
+        medications: medications,
+        instructions: instructions,
+        follow_up_date: followUpDate,
+        tests: pendingTests,
+        files: uploadedFiles.map(function(f) { return f.name; }) // Just file names for now
+    };
+    
+    fetch('/api/prescription/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(prescriptionData)
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (pendingTests.length > 0) {
+                return saveAllTests(visitId);
+            } else {
+                return Promise.resolve();
+            }
+        } else {
+            throw new Error(data.message);
+        }
+    })
+    .then(function() {
+        alert('Prescription saved successfully');
+        closePrescriptionModal();
+        location.reload();
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+        alert('Error saving prescription: ' + error.message);
+    });
+});
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadTestTypes();
+    updateDemographics();
+});
+
+function loadTestTypes() {
+    var categorySelect = document.getElementById('testCategory');
+    categorySelect.innerHTML = '<option value="">Select Category</option>';
+    
+    for (var i = 0; i < testTypes.length; i++) {
+        var category = testTypes[i];
+        var option = document.createElement('option');
+        option.value = category.category;
+        option.textContent = category.category;
+        categorySelect.appendChild(option);
+    }
+}
+
+function updateTestOptions() {
+    var categorySelect = document.getElementById('testCategory');
+    var testSelect = document.getElementById('testName');
+    var selectedCategory = categorySelect.value;
+    
+    testSelect.innerHTML = '<option value="">Select Test</option>';
+    testSelect.disabled = !selectedCategory;
+    
+    if (selectedCategory) {
+        var category = testTypes.find(function(cat) { return cat.category === selectedCategory; });
+        if (category) {
+            for (var i = 0; i < category.tests.length; i++) {
+                var test = category.tests[i];
+                var option = document.createElement('option');
+                option.value = test;
+                option.textContent = test;
+                testSelect.appendChild(option);
+            }
+        }
+        testSelect.disabled = false;
+    }
+}
+
+function clearTestForm() {
+    document.getElementById('testCategory').value = '';
+    document.getElementById('testName').value = '';
+    document.getElementById('testName').disabled = true;
+    document.getElementById('testName').innerHTML = '<option value="">Select Test</option>';
+    document.getElementById('customTestName').value = '';
+    document.getElementById('testInstructions').value = '';
+}
+
+function addTestToList() {
+    var testName = document.getElementById('testName').value || document.getElementById('customTestName').value;
+    var testCategory = document.getElementById('testCategory').value;
+    var testInstructions = document.getElementById('testInstructions').value;
+    
+    if (!testName) {
+        alert('Please select or enter a test name');
+        return;
+    }
+    
+    var test = {
+        name: testName,
+        category: testCategory || 'Other',
+        instructions: testInstructions,
+        id: Date.now()
+    };
+    
+    pendingTests.push(test);
+    updateTestsList();
+    clearTestForm();
+}
+
+function updateTestsList() {
+    var container = document.getElementById('addedTestsList');
+    if (pendingTests.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    var html = '<div class="text-sm font-medium text-gray-700 mb-2">Tests to be assigned:</div>';
+    for (var i = 0; i < pendingTests.length; i++) {
+        var test = pendingTests[i];
+        html += 
+            '<div class="flex justify-between items-center bg-white border rounded p-2">' +
+                '<div>' +
+                    '<span class="font-medium">' + test.name + '</span>' +
+                    '<span class="text-gray-500 text-sm">(' + test.category + ')</span>' +
+                    (test.instructions ? '<div class="text-xs text-gray-600">' + test.instructions + '</div>' : '') +
+                '</div>' +
+                '<button onclick="removeTestFromList(' + i + ')" class="text-red-600 hover:text-red-800 text-sm">' +
+                    '<i class="fas fa-times"></i>' +
+                '</button>' +
+            '</div>';
+    }
+    container.innerHTML = html;
+}
+
+function removeTestFromList(index) {
+    pendingTests.splice(index, 1);
+    updateTestsList();
+}
+</script>
+
+<style>
+.toggle-bg {
+    transition: background-color 0.3s ease;
+}
+
+.toggle-dot {
+    transition: transform 0.3s ease;
+}
+
+#prescriptionModeToggle:checked + label .toggle-bg {
+    background-color: #10b981 !important;
+}
+
+#prescriptionModeToggle:checked + label .toggle-dot {
+    transform: translateX(2rem);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Report - CareOrbit{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <i class="fas fa-file-medical text-2xl text-blue-600 mr-3"></i>
+                    <h1 class="text-2xl font-bold text-gray-900">Patient Report</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/admin/dashboard" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                    </a>
+                    <button onclick="logout()" class="logout-btn bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Patient Information Card -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800" id="patientName">Loading...</h2>
+                    <p class="text-gray-600" id="patientId">Patient ID: Loading...</p>
+                </div>
+                <div class="flex space-x-4">
+                    <button id="addNewRecordBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Add New Record
+                    </button>
+                    <button id="printReportBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-print mr-2"></i>Print Report
+                    </button>
+                </div>
+            </div>
+
+            <!-- Patient Details Grid -->
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Basic Information -->
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-blue-800 mb-3">
+                        <i class="fas fa-user mr-2"></i>Basic Information
+                    </h3>
+                    <div class="space-y-2 text-sm">
+                        <div><strong>Age:</strong> <span id="patientAge">-</span> years</div>
+                        <div><strong>Gender:</strong> <span id="patientGender">-</span></div>
+                        <div><strong>Phone:</strong> <span id="patientPhone">-</span></div>
+                        <div><strong>Address:</strong> <span id="patientAddress">-</span></div>
+                    </div>
+                </div>
+
+                <!-- Medical Information -->
+                <div class="bg-red-50 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-red-800 mb-3">
+                        <i class="fas fa-heartbeat mr-2"></i>Medical Information
+                    </h3>
+                    <div class="space-y-2 text-sm">
+                        <div><strong>Allergies:</strong> <span id="patientAllergies">None</span></div>
+                        <div><strong>Chronic Conditions:</strong> <span id="patientChronic">None</span></div>
+                        <div><strong>Blood Group:</strong> <span id="patientBloodGroup">Not specified</span></div>
+                    </div>
+                </div>
+
+                <!-- Visit Statistics -->
+                <div class="bg-green-50 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-green-800 mb-3">
+                        <i class="fas fa-chart-line mr-2"></i>Visit Statistics
+                    </h3>
+                    <div class="space-y-2 text-sm">
+                        <div><strong>Total Visits:</strong> <span id="totalVisits">0</span></div>
+                        <div><strong>Last Visit:</strong> <span id="lastVisitDate">Never</span></div>
+                        <div><strong>Next Follow-up:</strong> <span id="nextFollowUp">None scheduled</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visit History -->
+        <div class="bg-white rounded-xl shadow-lg">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-gray-800">Complete Visit History</h2>
+                <div class="flex space-x-2">
+                    <select id="filterDepartment" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">All Departments</option>
+                    </select>
+                    <select id="filterYear" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">All Years</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="visitHistoryContainer" class="p-6">
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600">Loading visit history...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Visit Details Modal -->
+<div id="visitDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800">Visit Details</h3>
+                    <button id="closeVisitModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div id="visitDetailsContent">
+                    <!-- Visit details will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/auth.js"></script>
+<script>
+class PatientReport {
+    constructor() {
+        this.patientId = this.getPatientIdFromUrl();
+        this.patient = null;
+        this.visitHistory = [];
+        this.initializeEventListeners();
+        this.loadPatientData();
+    }
+
+    getPatientIdFromUrl() {
+        var urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('patient_id');
+    }
+
+    initializeEventListeners() {
+        document.getElementById('addNewRecordBtn').addEventListener('click', function() {
+            window.location.href = '/admin/departments?patient_id=' + this.patientId;
+        }.bind(this));
+
+        document.getElementById('printReportBtn').addEventListener('click', function() {
+            this.printReport();
+        }.bind(this));
+
+        document.getElementById('filterDepartment').addEventListener('change', function() {
+            this.filterVisitHistory();
+        }.bind(this));
+
+        document.getElementById('filterYear').addEventListener('change', function() {
+            this.filterVisitHistory();
+        }.bind(this));
+
+        document.getElementById('closeVisitModal').addEventListener('click', function() {
+            this.closeVisitModal();
+        }.bind(this));
+
+        // Close modal when clicking outside
+        document.getElementById('visitDetailsModal').addEventListener('click', function(e) {
+            if (e.target.id === 'visitDetailsModal') {
+                this.closeVisitModal();
+            }
+        }.bind(this));
+    }
+
+    async loadPatientData() {
+        try {
+            if (!this.patientId) {
+                showAlert('Patient ID not provided', 'error');
+                return;
+            }
+
+            var response = await fetch('/api/patient/' + this.patientId);
+            var data = await response.json();
+
+            if (data.success) {
+                this.patient = data.patient;
+                this.populatePatientInfo();
+                await this.loadVisitHistory();
+            } else {
+                showAlert('Error loading patient data: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error loading patient data:', error);
+            showAlert('Error loading patient data', 'error');
+        }
+    }
+
+    populatePatientInfo() {
+        document.getElementById('patientName').textContent = this.patient.name;
+        document.getElementById('patientId').textContent = 'Patient ID: ' + this.patient.patient_id;
+        document.getElementById('patientAge').textContent = this.patient.age || 'Not specified';
+        document.getElementById('patientGender').textContent = this.patient.gender;
+        document.getElementById('patientPhone').textContent = this.patient.contact_number;
+        document.getElementById('patientAddress').textContent = this.patient.address;
+        document.getElementById('patientAllergies').textContent = this.patient.allergies || 'None reported';
+        document.getElementById('patientChronic').textContent = this.patient.chronic_illness || 'None reported';
+    }
+
+    async loadVisitHistory() {
+        try {
+            var response = await fetch('/api/patient/' + this.patientId + '/complete-history');
+            var data = await response.json();
+
+            if (data.success) {
+                this.visitHistory = data.visits || [];
+                this.populateVisitStatistics();
+                this.populateFilterOptions();
+                this.renderVisitHistory();
+            } else {
+                showAlert('Error loading visit history: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error loading visit history:', error);
+            showAlert('Error loading visit history', 'error');
+        }
+    }
+
+    populateVisitStatistics() {
+        document.getElementById('totalVisits').textContent = this.visitHistory.length;
+        
+        if (this.visitHistory.length > 0) {
+            var lastVisit = this.visitHistory[0]; // Assuming sorted by date desc
+            document.getElementById('lastVisitDate').textContent = this.formatDate(lastVisit.visit_date);
+            
+            // Find next follow-up
+            var nextFollowUp = this.visitHistory.find(function(visit) {
+                return visit.follow_up_date && new Date(visit.follow_up_date) > new Date();
+            });
+            
+            if (nextFollowUp) {
+                document.getElementById('nextFollowUp').textContent = this.formatDate(nextFollowUp.follow_up_date);
+            }
+        }
+    }
+
+    populateFilterOptions() {
+        var departments = new Set();
+        var years = new Set();
+
+        this.visitHistory.forEach(function(visit) {
+            departments.add(visit.department_name);
+            years.add(new Date(visit.visit_date).getFullYear());
+        });
+
+        var deptSelect = document.getElementById('filterDepartment');
+        departments.forEach(function(dept) {
+            var option = document.createElement('option');
+            option.value = dept;
+            option.textContent = dept;
+            deptSelect.appendChild(option);
+        });
+
+        var yearSelect = document.getElementById('filterYear');
+        Array.from(years).sort(function(a, b) { return b - a; }).forEach(function(year) {
+            var option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+        });
+    }
+
+    renderVisitHistory() {
+        var container = document.getElementById('visitHistoryContainer');
+        
+        if (this.visitHistory.length === 0) {
+            container.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="fas fa-calendar-times text-3xl mb-2"></i><div>No visit history found</div></div>';
+            return;
+        }
+
+        var filteredVisits = this.getFilteredVisits();
+        
+        var html = '<div class="space-y-4">';
+        
+        filteredVisits.forEach(function(visit, index) {
+            var statusColor = this.getStatusColor(visit.status);
+            var visitDate = new Date(visit.visit_date);
+            
+            html += '<div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="patientReport.showVisitDetails(\'' + visit.visit_id + '\')">';
+            html += '<div class="flex justify-between items-start mb-3">';
+            html += '<div class="flex items-center space-x-4">';
+            html += '<div class="flex-shrink-0">';
+            html += '<div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">';
+            html += '<i class="fas fa-stethoscope text-blue-600"></i>';
+            html += '</div>';
+            html += '</div>';
+            html += '<div>';
+            html += '<h4 class="font-semibold text-gray-900">' + this.formatDate(visit.visit_date) + '</h4>';
+            html += '<p class="text-sm text-gray-600">' + visit.doctor_name + ' - ' + visit.department_name + '</p>';
+            html += '</div>';
+            html += '</div>';
+            html += '<span class="px-2 py-1 text-xs rounded-full ' + statusColor + '">' + visit.status + '</span>';
+            html += '</div>';
+            
+            if (visit.chief_complaint) {
+                html += '<div class="mb-2"><strong class="text-sm text-gray-700">Chief Complaint:</strong> <span class="text-sm text-gray-600">' + visit.chief_complaint + '</span></div>';
+            }
+            
+            if (visit.diagnosis) {
+                html += '<div class="mb-2"><strong class="text-sm text-gray-700">Diagnosis:</strong> <span class="text-sm text-gray-600">' + visit.diagnosis + '</span></div>';
+            }
+            
+            if (visit.medications) {
+                html += '<div class="mb-2"><strong class="text-sm text-gray-700">Medications:</strong> <span class="text-sm text-gray-600">' + visit.medications.substring(0, 100) + (visit.medications.length > 100 ? '...' : '') + '</span></div>';
+            }
+            
+            if (visit.tests_ordered && visit.tests_ordered.length > 0) {
+                html += '<div class="mb-2"><strong class="text-sm text-gray-700">Tests:</strong> <span class="text-sm text-gray-600">' + visit.tests_ordered.length + ' test(s) ordered</span></div>';
+            }
+            
+            html += '<div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">';
+            html += '<div class="text-xs text-gray-500">Click to view full details</div>';
+            if (visit.follow_up_date) {
+                html += '<div class="text-xs text-blue-600"><i class="fas fa-calendar-check mr-1"></i>Follow-up: ' + this.formatDate(visit.follow_up_date) + '</div>';
+            }
+            html += '</div>';
+            html += '</div>';
+        }.bind(this));
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    getFilteredVisits() {
+        var deptFilter = document.getElementById('filterDepartment').value;
+        var yearFilter = document.getElementById('filterYear').value;
+        
+        return this.visitHistory.filter(function(visit) {
+            var matchesDept = !deptFilter || visit.department_name === deptFilter;
+            var matchesYear = !yearFilter || new Date(visit.visit_date).getFullYear().toString() === yearFilter;
+            return matchesDept && matchesYear;
+        });
+    }
+
+    filterVisitHistory() {
+        this.renderVisitHistory();
+    }
+
+    async showVisitDetails(visitId) {
+        try {
+            var response = await fetch('/api/visit/' + visitId + '/details');
+            var data = await response.json();
+
+            if (data.success) {
+                this.renderVisitDetails(data.visit_details);
+                document.getElementById('visitDetailsModal').classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            } else {
+                showAlert('Error loading visit details: ' + data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error loading visit details:', error);
+            showAlert('Error loading visit details', 'error');
+        }
+    }
+
+    renderVisitDetails(visit) {
+        var html = '<div class="grid md:grid-cols-2 gap-6">';
+        
+        // Visit Information
+        html += '<div class="bg-blue-50 rounded-lg p-4">';
+        html += '<h4 class="text-lg font-semibold text-blue-800 mb-3"><i class="fas fa-calendar mr-2"></i>Visit Information</h4>';
+        html += '<div class="space-y-2 text-sm">';
+        html += '<div><strong>Date:</strong> ' + this.formatDate(visit.visit_date) + '</div>';
+        html += '<div><strong>Doctor:</strong> ' + visit.doctor.name + '</div>';
+        html += '<div><strong>Department:</strong> ' + visit.department_name + '</div>';
+        html += '<div><strong>Status:</strong> <span class="' + this.getStatusColor(visit.status) + ' px-2 py-1 rounded-full text-xs">' + visit.status + '</span></div>';
+        html += '</div>';
+        html += '</div>';
+        
+        // Medical Details
+        html += '<div class="bg-green-50 rounded-lg p-4">';
+        html += '<h4 class="text-lg font-semibold text-green-800 mb-3"><i class="fas fa-stethoscope mr-2"></i>Medical Details</h4>';
+        html += '<div class="space-y-2 text-sm">';
+        html += '<div><strong>Chief Complaint:</strong> ' + (visit.reason_for_visit || 'Not specified') + '</div>';
+        html += '<div><strong>Symptoms:</strong> ' + (visit.symptoms || 'Not recorded') + '</div>';
+        html += '<div><strong>Diagnosis:</strong> ' + (visit.diagnosis || 'Not provided') + '</div>';
+        html += '</div>';
+        html += '</div>';
+        
+        html += '</div>';
+        
+        // Medications
+        if (visit.medications) {
+            html += '<div class="mt-6 bg-yellow-50 rounded-lg p-4">';
+            html += '<h4 class="text-lg font-semibold text-yellow-800 mb-3"><i class="fas fa-pills mr-2"></i>Medications Prescribed</h4>';
+            html += '<div class="text-sm whitespace-pre-line">' + visit.medications + '</div>';
+            html += '</div>';
+        }
+        
+        // Instructions
+        if (visit.instructions) {
+            html += '<div class="mt-6 bg-purple-50 rounded-lg p-4">';
+            html += '<h4 class="text-lg font-semibold text-purple-800 mb-3"><i class="fas fa-clipboard-list mr-2"></i>Instructions</h4>';
+            html += '<div class="text-sm whitespace-pre-line">' + visit.instructions + '</div>';
+            html += '</div>';
+        }
+        
+        // Follow-up
+        if (visit.follow_up_date) {
+            html += '<div class="mt-6 bg-red-50 rounded-lg p-4">';
+            html += '<h4 class="text-lg font-semibold text-red-800 mb-3"><i class="fas fa-calendar-check mr-2"></i>Follow-up</h4>';
+            html += '<div class="text-sm">Scheduled for: ' + this.formatDate(visit.follow_up_date) + '</div>';
+            html += '</div>';
+        }
+        
+        document.getElementById('visitDetailsContent').innerHTML = html;
+    }
+
+    closeVisitModal() {
+        document.getElementById('visitDetailsModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    getStatusColor(status) {
+        switch (status) {
+            case 'completed': return 'bg-green-100 text-green-800';
+            case 'in_progress': return 'bg-yellow-100 text-yellow-800';
+            case 'assigned': return 'bg-blue-100 text-blue-800';
+            case 'cancelled': return 'bg-red-100 text-red-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    }
+
+    formatDate(dateString) {
+        if (!dateString) return 'Not specified';
+        var date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    printReport() {
+        window.print();
+    }
+}
+
+// Initialize patient report
+var patientReport;
+document.addEventListener('DOMContentLoaded', function() {
+    patientReport = new PatientReport();
+});
+
+async function logout() {
+    try {
+        var response = await fetch('/api/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        var data = await response.json();
+        if (data.success) {
+            window.location.href = '/';
+        }
+    } catch (error) {
+        showAlert('Error logging out', 'error');
+    }
+}
+
+function showAlert(message, type) {
+    alert(message);
+}
+</script>
+{% endblock %}
