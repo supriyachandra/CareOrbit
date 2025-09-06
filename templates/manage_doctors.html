@@ -1,0 +1,976 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Doctors - CareOrbit{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <i class="fas fa-user-md text-2xl text-blue-600 mr-3"></i>
+                    <h1 class="text-2xl font-bold text-gray-900">Manage Doctors</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- Added Register New Doctor button at top right -->
+                    <button id="registerNewDoctorBtn" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                        <i class="fas fa-user-plus mr-2"></i>Register New Doctor
+                    </button>
+                    <a href="/admin/dashboard" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                    </a>
+                    <button onclick="logout()" class="logout-btn bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Stats Cards -->
+        <div class="grid md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        <i class="fas fa-user-md text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Total Doctors</p>
+                        <p class="text-2xl font-bold text-gray-900" id="totalDoctors">0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        <i class="fas fa-hospital text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Departments</p>
+                        <p class="text-2xl font-bold text-gray-900" id="totalDepartments">0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                        <i class="fas fa-calendar-check text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Active Today</p>
+                        <p class="text-2xl font-bold text-gray-900" id="activeDoctors">0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                        <i class="fas fa-users text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Avg Patients/Day</p>
+                        <p class="text-2xl font-bold text-gray-900" id="avgPatients">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="grid md:grid-cols-4 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                    <input type="text" id="searchInput" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="Name, Specialization, or Room">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                    <select id="departmentFilter" 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">All Departments</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                    <select id="sortBy" 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="name">Name</option>
+                        <option value="department">Department</option>
+                        <option value="specialization">Specialization</option>
+                        <option value="created_at">Join Date</option>
+                    </select>
+                </div>
+                <div class="flex items-end space-x-2">
+                    <button id="exportBtn" 
+                            class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                        <i class="fas fa-download mr-2"></i>Export
+                    </button>
+                    <button id="refreshBtn" 
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctors Table -->
+        <div class="bg-white rounded-xl shadow-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-800">Doctor List</h2>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor Info</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="doctorsTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Doctors will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div class="text-sm text-gray-700">
+                    Showing <span id="showingFrom">0</span> to <span id="showingTo">0</span> of <span id="totalCount">0</span> doctors
+                </div>
+                <div class="flex space-x-2">
+                    <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50" disabled>
+                        Previous
+                    </button>
+                    <span id="pageInfo" class="px-3 py-1 text-sm">Page 1 of 1</span>
+                    <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50" disabled>
+                        Next
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Register New Doctor Modal -->
+<div id="registerDoctorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold text-gray-800">Register New Doctor</h3>
+                    <button id="closeRegisterModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div id="registerValidationMessage" class="hidden mb-4 p-4 rounded-lg"></div>
+                
+                <form id="doctorRegForm" class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                        <input type="text" id="regDoctorName" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Username *</label>
+                        <input type="text" id="regDoctorUsername" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Login username">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                        <input type="password" id="regDoctorPassword" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Initial password">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" id="regDoctorEmail" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                        <input type="tel" id="regDoctorPhone" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Department *</label>
+                        <select id="regDoctorDepartment" required 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Select Department</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Specialization *</label>
+                        <input type="text" id="regDoctorSpecialization" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="e.g., Cardiology, Pediatrics">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Room Number</label>
+                        <input type="text" id="regDoctorRoom" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="e.g., 101, A-205">
+                    </div>
+                    
+                    <div class="md:col-span-2 bg-blue-50 p-4 rounded-lg mb-4">
+                        <p class="text-sm text-blue-800">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            <strong>Note:</strong> The doctor will receive these login credentials and can change their password later.
+                        </p>
+                    </div>
+                    
+                    <div class="md:col-span-2 flex justify-end space-x-4">
+                        <button type="button" id="cancelRegisterBtn" 
+                                class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                            <i class="fas fa-save mr-2"></i>Register Doctor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Doctor Details Modal -->
+<div id="viewDoctorModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-screen overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-gray-800">Doctor Details</h3>
+                <button id="closeViewDoctorModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <!-- Doctor Info Card -->
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-3">
+                            <i class="fas fa-user-md mr-2"></i>Doctor Information
+                        </h4>
+                        <div class="space-y-2">
+                            <div><strong>Name:</strong> <span id="viewDoctorName"></span></div>
+                            <div><strong>Username:</strong> <span id="viewDoctorUsername"></span></div>
+                            <div><strong>Email:</strong> <span id="viewDoctorEmail"></span></div>
+                            <div><strong>Phone:</strong> <span id="viewDoctorPhone"></span></div>
+                            <div><strong>Room:</strong> <span id="viewDoctorRoom"></span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Department Info Card -->
+                    <div class="bg-green-50 rounded-lg p-4">
+                        <h4 class="text-lg font-semibold text-green-800 mb-3">
+                            <i class="fas fa-hospital mr-2"></i>Department Information
+                        </h4>
+                        <div class="space-y-2">
+                            <div><strong>Department:</strong> <span id="viewDoctorDepartment"></span></div>
+                            <div><strong>Specialization:</strong> <span id="viewDoctorSpecialization"></span></div>
+                            <div><strong>Join Date:</strong> <span id="viewDoctorJoinDate"></span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-4 pt-6 border-t">
+                    <button id="editDoctorPasswordBtn" class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                        <i class="fas fa-key mr-2"></i>Change Password
+                    </button>
+                    <button id="editDoctorBtn" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-edit mr-2"></i>Edit Doctor
+                    </button>
+                    <button id="closeViewDoctorModalBtn" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Doctor Modal -->
+<div id="editDoctorModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-gray-800">Edit Doctor</h3>
+                <button id="closeEditDoctorModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form id="editDoctorForm" class="grid md:grid-cols-2 gap-6">
+                    <input type="hidden" id="editDoctorId">
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                        <input type="text" id="editDoctorName" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Username *</label>
+                        <input type="text" id="editDoctorUsername" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" id="editDoctorEmail" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                        <input type="tel" id="editDoctorPhone" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Department *</label>
+                        <select id="editDoctorDepartment" required 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Select Department</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Specialization *</label>
+                        <input type="text" id="editDoctorSpecialization" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Room Number</label>
+                        <input type="text" id="editDoctorRoom" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div class="md:col-span-2 flex justify-end space-x-4 pt-6 border-t">
+                        <button type="button" id="cancelEditDoctorBtn" 
+                                class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-save mr-2"></i>Update Doctor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="changePasswordModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-gray-800">Change Doctor Password</h3>
+                <button id="closePasswordModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form id="changePasswordForm">
+                    <input type="hidden" id="passwordDoctorId">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Doctor Name</label>
+                        <input type="text" id="passwordDoctorName" readonly 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">New Password *</label>
+                        <input type="password" id="newPassword" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Enter new password">
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" id="cancelPasswordBtn" 
+                                class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                            <i class="fas fa-key mr-2"></i>Change Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function logout() {
+    fetch('/api/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            window.location.href = '/';
+        }
+    })
+    .catch(function(error) {
+        showAlert('Error logging out', 'error');
+    });
+}
+
+class DoctorManagement {
+    constructor() {
+        this.currentPage = 1;
+        this.perPage = 10;
+        this.currentDoctor = null;
+        this.initializeEventListeners();
+        this.loadStats();
+        this.loadDepartments();
+        this.loadDoctors();
+    }
+
+    initializeEventListeners() {
+        // Search and filters
+        document.getElementById('searchInput').addEventListener('input', 
+            this.debounce(() => this.loadDoctors(), 500));
+        document.getElementById('departmentFilter').addEventListener('change', () => this.loadDoctors());
+        document.getElementById('sortBy').addEventListener('change', () => this.loadDoctors());
+        
+        // Buttons
+        document.getElementById('refreshBtn').addEventListener('click', () => this.loadDoctors());
+        document.getElementById('exportBtn').addEventListener('click', () => this.exportDoctors());
+        document.getElementById('registerNewDoctorBtn').addEventListener('click', () => this.showRegisterModal());
+        
+        // Pagination
+        document.getElementById('prevPage').addEventListener('click', () => this.previousPage());
+        document.getElementById('nextPage').addEventListener('click', () => this.nextPage());
+        
+        // Register modal controls
+        document.getElementById('closeRegisterModal').addEventListener('click', () => this.closeRegisterModal());
+        document.getElementById('cancelRegisterBtn').addEventListener('click', () => this.closeRegisterModal());
+        document.getElementById('doctorRegForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.registerDoctor();
+        });
+        
+        // View modal controls
+        document.getElementById('closeViewDoctorModal').addEventListener('click', () => this.closeViewModal());
+        document.getElementById('closeViewDoctorModalBtn').addEventListener('click', () => this.closeViewModal());
+        document.getElementById('editDoctorBtn').addEventListener('click', () => {
+            const doctorId = this.currentDoctor._id;
+            this.closeViewModal();
+            this.editDoctor(doctorId);
+        });
+        document.getElementById('editDoctorPasswordBtn').addEventListener('click', () => {
+            const doctorId = this.currentDoctor._id;
+            this.closeViewModal();
+            this.showChangePasswordModal(doctorId);
+        });
+        
+        // Edit modal controls
+        document.getElementById('closeEditDoctorModal').addEventListener('click', () => this.closeEditModal());
+        document.getElementById('cancelEditDoctorBtn').addEventListener('click', () => this.closeEditModal());
+        document.getElementById('editDoctorForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.updateDoctor();
+        });
+        
+        // Password modal controls
+        document.getElementById('closePasswordModal').addEventListener('click', () => this.closePasswordModal());
+        document.getElementById('cancelPasswordBtn').addEventListener('click', () => this.closePasswordModal());
+        document.getElementById('changePasswordForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.changePassword();
+        });
+    }
+
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    async loadStats() {
+        try {
+            const response = await fetch('/api/doctors/stats');
+            const stats = await response.json();
+            
+            document.getElementById('totalDoctors').textContent = stats.total_doctors || 0;
+            document.getElementById('totalDepartments').textContent = stats.total_departments || 0;
+            document.getElementById('activeDoctors').textContent = stats.active_today || 0;
+            document.getElementById('avgPatients').textContent = stats.avg_patients_per_day || 0;
+            
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        }
+    }
+
+    async loadDepartments() {
+        try {
+            const response = await fetch('/api/departments');
+            const departments = await response.json();
+            
+            const departmentFilter = document.getElementById('departmentFilter');
+            const regDepartment = document.getElementById('regDoctorDepartment');
+            const editDepartment = document.getElementById('editDoctorDepartment');
+            
+            // Clear existing options
+            departmentFilter.innerHTML = '<option value="">All Departments</option>';
+            regDepartment.innerHTML = '<option value="">Select Department</option>';
+            editDepartment.innerHTML = '<option value="">Select Department</option>';
+            
+            departments.forEach(dept => {
+                const option1 = new Option(dept.department_name, dept._id);
+                const option2 = new Option(dept.department_name, dept._id);
+                const option3 = new Option(dept.department_name, dept._id);
+                
+                departmentFilter.appendChild(option1);
+                regDepartment.appendChild(option2);
+                editDepartment.appendChild(option3);
+            });
+            
+        } catch (error) {
+            console.error('Error loading departments:', error);
+        }
+    }
+
+    async loadDoctors() {
+        const search = document.getElementById('searchInput').value;
+        const department = document.getElementById('departmentFilter').value;
+        const sort = document.getElementById('sortBy').value;
+        
+        const params = new URLSearchParams({
+            page: this.currentPage,
+            per_page: this.perPage,
+            search: search,
+            department: department,
+            sort: sort
+        });
+
+        try {
+            const response = await fetch(`/api/doctors/list?${params}`);
+            const data = await response.json();
+            
+            this.renderDoctors(data.doctors);
+            this.updatePagination(data);
+            
+        } catch (error) {
+            console.error('Error loading doctors:', error);
+            showAlert('Error loading doctors', 'error');
+        }
+    }
+
+    renderDoctors(doctors) {
+        const tbody = document.getElementById('doctorsTableBody');
+        
+        if (doctors.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                        <i class="fas fa-user-md text-4xl mb-4"></i>
+                        <div>No doctors found</div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = doctors.map(doctor => `
+            <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10">
+                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-green-400 to-green-600 flex items-center justify-center">
+                                <i class="fas fa-user-md text-white"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${doctor.name}</div>
+                            <div class="text-sm text-gray-500">@${doctor.username}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">
+                        <i class="fas fa-hospital text-blue-500 mr-1"></i>${doctor.department_name || 'N/A'}
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        <i class="fas fa-stethoscope text-gray-400 mr-1"></i>${doctor.specialization || 'N/A'}
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">
+                        <i class="fas fa-envelope text-blue-500 mr-1"></i>${doctor.email || 'N/A'}
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        <i class="fas fa-phone text-gray-400 mr-1"></i>${doctor.phone || 'N/A'}
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">
+                        <i class="fas fa-door-open text-purple-500 mr-1"></i>Room ${doctor.room_no || 'N/A'}
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        <i class="fas fa-users text-gray-400 mr-1"></i>${doctor.current_load || 0} patients today
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div class="flex space-x-2">
+                        <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm transition-all" 
+                                onclick="doctorMgmt.viewDoctor('${doctor._id}')" title="View Doctor Details">
+                            View
+                        </button>
+                        <button class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded-lg text-sm transition-all" 
+                                onclick="doctorMgmt.editDoctor('${doctor._id}')" title="Edit Doctor">
+                            Edit
+                        </button>
+                        <button class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded-lg text-sm transition-all" 
+                                onclick="doctorMgmt.showChangePasswordModal('${doctor._id}')" title="Change Password">
+                            <i class="fas fa-key"></i>
+                        </button>
+                        <button class="text-red-600 hover:text-red-900 hover:bg-red-50 p-2 rounded-full transition-all" 
+                                onclick="doctorMgmt.deleteDoctor('${doctor._id}')" title="Delete Doctor">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    updatePagination(data) {
+        document.getElementById('showingFrom').textContent = (data.page - 1) * data.per_page + 1;
+        document.getElementById('showingTo').textContent = Math.min(data.page * data.per_page, data.total);
+        document.getElementById('totalCount').textContent = data.total;
+        document.getElementById('pageInfo').textContent = `Page ${data.page} of ${data.total_pages}`;
+        
+        document.getElementById('prevPage').disabled = data.page <= 1;
+        document.getElementById('nextPage').disabled = data.page >= data.total_pages;
+    }
+
+    previousPage() {
+        if (this.currentPage > 1) {
+            this.currentPage--;
+            this.loadDoctors();
+        }
+    }
+
+    nextPage() {
+        this.currentPage++;
+        this.loadDoctors();
+    }
+
+    showRegisterModal() {
+        document.getElementById('registerDoctorModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeRegisterModal() {
+        document.getElementById('registerDoctorModal').classList.add('hidden');
+        document.getElementById('doctorRegForm').reset();
+        document.getElementById('registerValidationMessage').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    async registerDoctor() {
+        const formData = {
+            name: document.getElementById('regDoctorName').value.trim(),
+            username: document.getElementById('regDoctorUsername').value.trim(),
+            password: document.getElementById('regDoctorPassword').value,
+            email: document.getElementById('regDoctorEmail').value.trim(),
+            phone: document.getElementById('regDoctorPhone').value.trim(),
+            department_id: document.getElementById('regDoctorDepartment').value,
+            specialization: document.getElementById('regDoctorSpecialization').value.trim(),
+            room_no: document.getElementById('regDoctorRoom').value.trim()
+        };
+
+        if (!formData.name || !formData.username || !formData.password || !formData.department_id || !formData.specialization) {
+            this.showValidationMessage('Please fill in all required fields', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/doctor/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                this.closeRegisterModal();
+                showAlert('Doctor registered successfully', 'success');
+                this.loadDoctors();
+                this.loadStats();
+            } else {
+                this.showValidationMessage(data.message, 'error');
+            }
+        } catch (error) {
+            this.showValidationMessage('Error registering doctor. Please try again.', 'error');
+        }
+    }
+
+    showValidationMessage(message, type) {
+        const messageDiv = document.getElementById('registerValidationMessage');
+        messageDiv.className = 'mb-4 p-4 rounded-lg';
+        
+        if (type === 'error') {
+            messageDiv.className += ' bg-red-50 text-red-800 border border-red-200';
+        } else if (type === 'success') {
+            messageDiv.className += ' bg-green-50 text-green-800 border border-green-200';
+        }
+        
+        messageDiv.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>' + message;
+        messageDiv.classList.remove('hidden');
+    }
+
+    async viewDoctor(doctorId) {
+        try {
+            const response = await fetch(`/api/doctor/${doctorId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.currentDoctor = data.doctor;
+                this.populateViewModal(data.doctor);
+                document.getElementById('viewDoctorModal').classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            } else {
+                showAlert(data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('Error loading doctor details', 'error');
+        }
+    }
+
+    populateViewModal(doctor) {
+        document.getElementById('viewDoctorName').textContent = doctor.name;
+        document.getElementById('viewDoctorUsername').textContent = doctor.username;
+        document.getElementById('viewDoctorEmail').textContent = doctor.email || 'Not provided';
+        document.getElementById('viewDoctorPhone').textContent = doctor.phone || 'Not provided';
+        document.getElementById('viewDoctorRoom').textContent = doctor.room_no || 'Not assigned';
+        document.getElementById('viewDoctorDepartment').textContent = doctor.department_name || 'N/A';
+        document.getElementById('viewDoctorSpecialization').textContent = doctor.specialization || 'N/A';
+        document.getElementById('viewDoctorJoinDate').textContent = doctor.created_at ? new Date(doctor.created_at).toLocaleDateString() : 'N/A';
+    }
+
+    closeViewModal() {
+        document.getElementById('viewDoctorModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+        this.currentDoctor = null;
+    }
+
+    async editDoctor(doctorId) {
+        try {
+            const response = await fetch(`/api/doctor/${doctorId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.currentDoctor = data.doctor;
+                this.populateEditForm(data.doctor);
+                document.getElementById('editDoctorModal').classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        } catch (error) {
+            showAlert('Error loading doctor details', 'error');
+        }
+    }
+
+    populateEditForm(doctor) {
+        document.getElementById('editDoctorId').value = doctor._id;
+        document.getElementById('editDoctorName').value = doctor.name;
+        document.getElementById('editDoctorUsername').value = doctor.username;
+        document.getElementById('editDoctorEmail').value = doctor.email || '';
+        document.getElementById('editDoctorPhone').value = doctor.phone || '';
+        document.getElementById('editDoctorDepartment').value = doctor.department_id || '';
+        document.getElementById('editDoctorSpecialization').value = doctor.specialization || '';
+        document.getElementById('editDoctorRoom').value = doctor.room_no || '';
+    }
+
+    async updateDoctor() {
+        const doctorId = document.getElementById('editDoctorId').value;
+        const formData = {
+            name: document.getElementById('editDoctorName').value.trim(),
+            username: document.getElementById('editDoctorUsername').value.trim(),
+            email: document.getElementById('editDoctorEmail').value.trim(),
+            phone: document.getElementById('editDoctorPhone').value.trim(),
+            department_id: document.getElementById('editDoctorDepartment').value,
+            specialization: document.getElementById('editDoctorSpecialization').value.trim(),
+            room_no: document.getElementById('editDoctorRoom').value.trim()
+        };
+
+        try {
+            const response = await fetch(`/api/doctor/${doctorId}/update`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Doctor updated successfully', 'success');
+                this.closeEditModal();
+                this.loadDoctors();
+            } else {
+                showAlert(data.message || 'Error updating doctor', 'error');
+            }
+        } catch (error) {
+            showAlert('Error updating doctor', 'error');
+        }
+    }
+
+    closeEditModal() {
+        document.getElementById('editDoctorModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+        document.getElementById('editDoctorForm').reset();
+    }
+
+    showChangePasswordModal(doctorId) {
+        if (!this.currentDoctor || this.currentDoctor._id !== doctorId) {
+            // Load doctor data first
+            fetch(`/api/doctor/${doctorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.currentDoctor = data.doctor;
+                        document.getElementById('passwordDoctorId').value = doctorId;
+                        document.getElementById('passwordDoctorName').value = this.currentDoctor.name;
+                        document.getElementById('changePasswordModal').classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                    } else {
+                        showAlert('Error loading doctor details', 'error');
+                    }
+                })
+                .catch(error => {
+                    showAlert('Error loading doctor details', 'error');
+                });
+        } else {
+            document.getElementById('passwordDoctorId').value = doctorId;
+            document.getElementById('passwordDoctorName').value = this.currentDoctor.name;
+            document.getElementById('changePasswordModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    async changePassword() {
+        const doctorId = document.getElementById('passwordDoctorId').value;
+        const newPassword = document.getElementById('newPassword').value;
+
+        if (!newPassword) {
+            showAlert('Please enter a new password', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/doctor/${doctorId}/change-password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password: newPassword })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Password changed successfully', 'success');
+                this.closePasswordModal();
+            } else {
+                showAlert(data.message || 'Error changing password', 'error');
+            }
+        } catch (error) {
+            showAlert('Error changing password', 'error');
+        }
+    }
+
+    closePasswordModal() {
+        document.getElementById('changePasswordModal').classList.add('hidden');
+        document.getElementById('changePasswordForm').reset();
+        document.body.style.overflow = 'auto';
+    }
+
+    async deleteDoctor(doctorId) {
+        if (!confirm('Are you sure you want to delete this doctor? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/doctor/${doctorId}/delete`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Doctor deleted successfully', 'success');
+                this.loadDoctors();
+                this.loadStats();
+            } else {
+                showAlert(data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('Error deleting doctor', 'error');
+        }
+    }
+
+    async exportDoctors() {
+        try {
+            const response = await fetch('/api/doctors/export');
+            const blob = await response.blob();
+            
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `doctors_export_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            showAlert('Doctors exported successfully', 'success');
+        } catch (error) {
+            showAlert('Error exporting doctors', 'error');
+        }
+    }
+}
+
+function showAlert(message, type) {
+    alert(message);
+}
+
+// Initialize doctor management
+let doctorMgmt;
+document.addEventListener('DOMContentLoaded', () => {
+    doctorMgmt = new DoctorManagement();
+});
+</script>
+{% endblock %}

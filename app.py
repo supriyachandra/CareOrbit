@@ -212,6 +212,11 @@ def admin_search_results():
 def admin_patients():
     return render_template('patient_management.html')
 
+@app.route('/admin/manage-doctors')
+@role_required('admin')
+def admin_manage_doctors():
+    return render_template('manage_doctors.html')
+
 @app.route('/api/doctor/past-patients')
 @role_required('doctor')
 def get_past_patients():
@@ -237,7 +242,7 @@ def get_past_patients():
                     if isinstance(patient['date_of_birth'], datetime):
                         age = today_date.year - patient['date_of_birth'].year
                         if today_date.month < patient['date_of_birth'].month or \
-                           (today_date.month == patient['date_of_birth'].month and today_date.day < patient['date_of_birth'].day):
+                           (today_date.month == today_date.month and today_date.day < patient['date_of_birth'].day):
                             age -= 1
                     else:
                         age = 0
@@ -525,8 +530,7 @@ def search_patient():
                         doctor = mongo.db.doctor.find_one({'_id': visit.get('doctor_id')})
                         department = mongo.db.department.find_one({'_id': visit.get('department_id')})
 
-                        # Handle visit_date safely
-                        visit_date = visit.get('visit_date')
+                        visit_date = visit.get('visit_date_time') or visit.get('visit_date')
                         if visit_date:
                             if isinstance(visit_date, datetime):
                                 visit_date_str = visit_date.strftime('%Y-%m-%d %H:%M')
@@ -542,7 +546,8 @@ def search_patient():
                             'department_name': department['department_name'] if department else 'Unknown',
                             'diagnosis': visit.get('diagnosis', ''),
                             'medications': visit.get('medications', ''),
-                            'follow_up_date': visit['follow_up_date'].strftime('%Y-%m-%d') if visit.get('follow_up_date') else ''
+                            'follow_up_date': visit['follow_up_date'].strftime('%Y-%m-%d') if visit.get('follow_up_date') else '',
+                            'prescription_image': visit.get('prescription_image', '')  # Added prescription image field
                         }
                         visit_history.append(visit_data)
                     except Exception as visit_error:
@@ -843,6 +848,393 @@ def get_departments():
         return jsonify(departments)
     except Exception as e:
         return jsonify({'success': False, 'message': 'Error fetching departments'})
+
+@app.route('/api/doctors/stats')
+@role_required('admin')
+def get_doctors_stats():
+    try:
+        # Get total doctors count
+        total_doctors = mongo.db.doctor.count_documents({})
+        
+        # Get total departments count
+        total_departments = mongo.db.department.count_documents({})
+        
+        # Get doctors active today (with visits today)
+        today = datetime.now().date()
+        start_of_day = datetime.combine(today, datetime.min.time())
+        end_of_day = datetime.combine(today, datetime.max.time())
+        
+        active_doctors = mongo.db.visit.distinct('doctor_id', {
+            'visit_date': {'$gte': start_of_day, '$lte': end_of_day}
+        })
+        
+        # Calculate average patients per day per doctor
+        total_visits_today = mongo.db.visit.count_documents({
+            'visit_date': {'$gte': start_of_day, '$lte': end_of_day}
+        })
+        
+        avg_patients_per_day = round(total_visits_today / total_doctors, 1) if total_doctors > 0 else 0
+        
+        return jsonify({
+            'total_doctors': total_doctors,
+            'total_departments': total_departments,
+            'active_today': len(active_doctors),
+            'avg_patients_per_day': avg_patients_per_day
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Error fetching doctor stats'})
+
+@app.route('/api/doctors/list')
+@role_required('admin')
+def get_doctors_list():
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        search = request.args.get('search', '').strip()
+        department = request.args.get('department', '').strip()
+        sort_by = request.args.get('sort', 'name')
+        
+        # Build query
+        query = {}
+        if search:
+            query['$or'] = [
+                {'name': {'$regex': search, '$options': 'i'}},
+                {'username': {'$regex': search, '$options': 'i'}},
+                {'specialization': {'$regex': search, '$options': 'i'}},
+                {'room_no': {'$regex': search, '$options': 'i'}}
+            ]
+        
+        if department:
+            query['department_id'] = ObjectId(department)
+        
+        # Sort options
+        sort_options = {
+            'name': [('name', 1)],
+            'department': [('department_id', 1)],
+            'specialization': [('specialization', 1)],
+            'created_at': [('created_at', -1)]
+        }
+        sort_criteria = sort_options.get(sort_by, [('name', 1)])
+        
+        # Get total count
+        total = mongo.db.doctor.count_documents(query)
+        
+        # Get paginated results
+        skip = (page - 1) * per_page
+        doctors = list(mongo.db.doctor.find(query).sort(sort_criteria).skip(skip).limit(per_page))
+        
+        # Enrich doctor data with department info and current load
+        today = datetime.now().date()
+        start_of_day = datetime.combine(today, datetime.min.time())
+        end_of_day = datetime.combine(today, datetime.max.time())
+        
+        doctor_list = []
+        for doctor in doctors:
+            # Get department name
+            department_name = 'N/A'
+            if 'department_id' in doctor:
+                dept = mongo.db.department.find_one({'_id': doctor['department_id']})
+                if dept:
+                    department_name = dept['department_name']
+            
+            # Get current patient load
+            current_load = mongo.db.visit.count_documents({
+                'doctor_id': doctor['_id'],
+                'visit_date': {'$gte': start_of_day, '$lte': end_of_day},
+                'status': {'$in': ['assigned', 'in_progress']}
+            })
+            
+            doctor_data = {
+                '_id': str(doctor['_id']),
+                'name': doctor['name'],
+                'username': doctor['username'],
+                'email': doctor.get('email', ''),
+                'phone': doctor.get('phone', ''),
+                'department_id': str(doctor.get('department_id', '')),
+                'department_name': department_name,
+                'specialization': doctor.get('specialization', ''),
+                'room_no': doctor.get('room_no', ''),
+                'current_load': current_load,
+                'created_at': doctor.get('created_at', datetime.now()).strftime('%Y-%m-%d') if doctor.get('created_at') else 'N/A'
+            }
+            doctor_list.append(doctor_data)
+        
+        total_pages = (total + per_page - 1) // per_page
+        
+        return jsonify({
+            'success': True,
+            'doctors': doctor_list,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': total_pages
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error fetching doctors: {str(e)}'})
+
+@app.route('/api/doctor/register', methods=['POST'])
+@role_required('admin')
+def register_doctor():
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'username', 'password', 'department_id', 'specialization']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'message': f'{field.replace("_", " ").title()} is required'})
+        
+        # Check if username already exists
+        existing_doctor = mongo.db.doctor.find_one({'username': data['username'].strip()})
+        if existing_doctor:
+            return jsonify({'success': False, 'message': 'Username already exists'})
+        
+        # Check if admin with same username exists
+        existing_admin = mongo.db.admin.find_one({'username': data['username'].strip()})
+        if existing_admin:
+            return jsonify({'success': False, 'message': 'Username already exists in admin accounts'})
+        
+        # Hash password
+        password_hash = generate_password_hash(data['password'])
+        
+        doctor_data = {
+            'name': data['name'].strip(),
+            'username': data['username'].strip(),
+            'password_hash': password_hash,
+            'email': data.get('email', '').strip(),
+            'phone': data.get('phone', '').strip(),
+            'department_id': ObjectId(data['department_id']),
+            'specialization': data['specialization'].strip(),
+            'room_no': data.get('room_no', '').strip(),
+            'created_at': datetime.now(),
+            'created_by': ObjectId(current_user.id)
+        }
+        
+        result = mongo.db.doctor.insert_one(doctor_data)
+        
+        if result.inserted_id:
+            return jsonify({
+                'success': True,
+                'message': 'Doctor registered successfully',
+                'doctor_id': str(result.inserted_id)
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Registration failed'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Registration error: {str(e)}'})
+
+@app.route('/api/doctor/<doctor_id>')
+@role_required('admin')
+def get_doctor_details(doctor_id):
+    try:
+        doctor = mongo.db.doctor.find_one({'_id': ObjectId(doctor_id)})
+        if not doctor:
+            return jsonify({'success': False, 'message': 'Doctor not found'})
+        
+        # Get department name
+        department_name = 'N/A'
+        if 'department_id' in doctor:
+            dept = mongo.db.department.find_one({'_id': doctor['department_id']})
+            if dept:
+                department_name = dept['department_name']
+        
+        doctor_data = {
+            '_id': str(doctor['_id']),
+            'name': doctor['name'],
+            'username': doctor['username'],
+            'email': doctor.get('email', ''),
+            'phone': doctor.get('phone', ''),
+            'department_id': str(doctor.get('department_id', '')),
+            'department_name': department_name,
+            'specialization': doctor.get('specialization', ''),
+            'room_no': doctor.get('room_no', ''),
+            'created_at': doctor.get('created_at', datetime.now()).strftime('%Y-%m-%d') if doctor.get('created_at') else 'N/A'
+        }
+        
+        return jsonify({'success': True, 'doctor': doctor_data})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error fetching doctor: {str(e)}'})
+
+@app.route('/api/doctor/<doctor_id>/update', methods=['PUT'])
+@role_required('admin')
+def update_doctor(doctor_id):
+    try:
+        data = request.get_json()
+        
+        # Check if doctor exists
+        doctor = mongo.db.doctor.find_one({'_id': ObjectId(doctor_id)})
+        if not doctor:
+            return jsonify({'success': False, 'message': 'Doctor not found'})
+        
+        # Check if username is being changed and if it already exists
+        if data.get('username') and data['username'].strip() != doctor['username']:
+            existing_doctor = mongo.db.doctor.find_one({
+                'username': data['username'].strip(),
+                '_id': {'$ne': ObjectId(doctor_id)}
+            })
+            if existing_doctor:
+                return jsonify({'success': False, 'message': 'Username already exists'})
+            
+            # Check admin collection too
+            existing_admin = mongo.db.admin.find_one({'username': data['username'].strip()})
+            if existing_admin:
+                return jsonify({'success': False, 'message': 'Username already exists in admin accounts'})
+        
+        update_data = {
+            'name': data.get('name', doctor['name']).strip(),
+            'username': data.get('username', doctor['username']).strip(),
+            'email': data.get('email', doctor.get('email', '')).strip(),
+            'phone': data.get('phone', doctor.get('phone', '')).strip(),
+            'specialization': data.get('specialization', doctor.get('specialization', '')).strip(),
+            'room_no': data.get('room_no', doctor.get('room_no', '')).strip(),
+            'updated_at': datetime.now(),
+            'updated_by': ObjectId(current_user.id)
+        }
+        
+        if data.get('department_id'):
+            update_data['department_id'] = ObjectId(data['department_id'])
+        
+        result = mongo.db.doctor.update_one(
+            {'_id': ObjectId(doctor_id)},
+            {'$set': update_data}
+        )
+        
+        if result.modified_count > 0:
+            return jsonify({'success': True, 'message': 'Doctor updated successfully'})
+        else:
+            return jsonify({'success': True, 'message': 'No changes made'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Update error: {str(e)}'})
+
+@app.route('/api/doctor/change-password', methods=['PUT'])
+@role_required('doctor')
+def doctor_change_password():
+    try:
+        data = request.get_json()
+        doctor_user_id = session.get('user_id')  # Use user_id instead of username
+        
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        
+        if not current_password or not new_password:
+            return jsonify({'success': False, 'message': 'Both current and new passwords are required'})
+        
+        doctor = mongo.db.doctor.find_one({'_id': ObjectId(doctor_user_id)})
+        if not doctor:
+            return jsonify({'success': False, 'message': 'Doctor not found'})
+        
+        # Check password in both possible fields
+        password_valid = False
+        if 'password_hash' in doctor and doctor['password_hash']:
+            password_valid = check_password_hash(doctor['password_hash'], current_password)
+        elif 'password' in doctor and doctor['password']:
+            password_valid = check_password_hash(doctor['password'], current_password)
+        
+        if not password_valid:
+            return jsonify({'success': False, 'message': 'Current password is incorrect'})
+        
+        # Update password
+        hashed_password = generate_password_hash(new_password)
+        result = mongo.db.doctor.update_one(
+            {'_id': ObjectId(doctor_user_id)},
+            {'$set': {
+                'password_hash': hashed_password,
+                'password': hashed_password,  # Update both fields for compatibility
+                'updated_at': datetime.now()
+            }}
+        )
+        
+        if result.modified_count > 0:
+            return jsonify({'success': True, 'message': 'Password changed successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to update password'})
+            
+    except Exception as e:
+        print(f"Password change error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/doctor/<doctor_id>/delete', methods=['DELETE'])
+@role_required('admin')
+def delete_doctor(doctor_id):
+    try:
+        # Check if doctor exists
+        doctor = mongo.db.doctor.find_one({'_id': ObjectId(doctor_id)})
+        if not doctor:
+            return jsonify({'success': False, 'message': 'Doctor not found'})
+        
+        # Check if doctor has any visits (prevent deletion if they have patient history)
+        visit_count = mongo.db.visit.count_documents({'doctor_id': ObjectId(doctor_id)})
+        if visit_count > 0:
+            return jsonify({
+                'success': False, 
+                'message': f'Cannot delete doctor. They have {visit_count} patient visits in the system. Consider deactivating instead.'
+            })
+        
+        # Delete the doctor
+        result = mongo.db.doctor.delete_one({'_id': ObjectId(doctor_id)})
+        
+        if result.deleted_count > 0:
+            return jsonify({'success': True, 'message': 'Doctor deleted successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to delete doctor'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Delete error: {str(e)}'})
+
+@app.route('/api/doctors/export')
+@role_required('admin')
+def export_doctors():
+    try:
+        import csv
+        import io
+        
+        # Get all doctors with department info
+        doctors = list(mongo.db.doctor.find({}))
+        
+        # Create CSV content
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            'Name', 'Username', 'Email', 'Phone', 'Department', 
+            'Specialization', 'Room Number', 'Join Date'
+        ])
+        
+        # Write doctor data
+        for doctor in doctors:
+            # Get department name
+            department_name = 'N/A'
+            if 'department_id' in doctor:
+                dept = mongo.db.department.find_one({'_id': doctor['department_id']})
+                if dept:
+                    department_name = dept['department_name']
+            
+            writer.writerow([
+                doctor['name'],
+                doctor['username'],
+                doctor.get('email', ''),
+                doctor.get('phone', ''),
+                department_name,
+                doctor.get('specialization', ''),
+                doctor.get('room_no', ''),
+                doctor.get('created_at', datetime.now()).strftime('%Y-%m-%d') if doctor.get('created_at') else 'N/A'
+            ])
+        
+        # Create response
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=doctors_export_{datetime.now().strftime("%Y%m%d")}.csv'
+        
+        return response
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Export error: {str(e)}'})
 
 @app.route('/api/doctors/<department_id>')
 @role_required('admin')
@@ -2055,8 +2447,14 @@ def record_new_visit():
 @role_required('doctor')
 def add_prescription():
     try:
-        data = request.get_json()
-        visit_id = data['visit_id']
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # Handle form data with files
+            data = request.form.to_dict()
+            visit_id = data['visit_id']
+        else:
+            # Handle JSON data
+            data = request.get_json()
+            visit_id = data['visit_id']
         
         # Get visit details
         visit = mongo.db.visit.find_one({'_id': ObjectId(visit_id)})
@@ -2066,6 +2464,61 @@ def add_prescription():
         doctor_id = session.get('user_id')
         if not doctor_id:
             return jsonify({'success': False, 'message': 'Doctor session not found'})
+        
+        uploaded_files = []
+        upload_errors = []
+        
+        # Create prescription upload folder if it doesn't exist
+        prescription_upload_folder = os.path.join(app.config['UPLOAD_FOLDER'], 'prescriptions')
+        os.makedirs(prescription_upload_folder, exist_ok=True)
+        
+        if 'files' in request.files:
+            files = request.files.getlist('files')
+            for file in files:
+                if file and file.filename:
+                    is_valid, validation_message = validate_file(file)
+                    if not is_valid:
+                        upload_errors.append(f"{file.filename}: {validation_message}")
+                        continue
+                    
+                    try:
+                        filename = secure_filename(file.filename)
+                        # Create unique filename for prescription
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        unique_filename = f"prescription_{visit_id}_{timestamp}_{filename}"
+                        file_path = os.path.join(prescription_upload_folder, unique_filename)
+                        
+                        if os.path.exists(file_path):
+                            import random
+                            random_suffix = random.randint(1000, 9999)
+                            name, ext = os.path.splitext(unique_filename)
+                            unique_filename = f"{name}_{random_suffix}{ext}"
+                            file_path = os.path.join(prescription_upload_folder, unique_filename)
+                        
+                        file.save(file_path)
+                        
+                        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+                            upload_errors.append(f"{filename}: Failed to save file properly")
+                            continue
+                        
+                        file_info = {
+                            'filename': filename,
+                            'stored_filename': unique_filename,
+                            'file_path': file_path,
+                            'file_size': os.path.getsize(file_path),
+                            'upload_date': datetime.now(),
+                            'uploaded_by': ObjectId(doctor_id),
+                            'mime_type': mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+                        }
+                        uploaded_files.append(file_info)
+                        
+                    except Exception as file_error:
+                        upload_errors.append(f"{file.filename}: {str(file_error)}")
+                        if 'file_path' in locals() and os.path.exists(file_path):
+                            try:
+                                os.remove(file_path)
+                            except:
+                                pass
         
         prescription_data = {
             'symptoms': data.get('symptoms', ''),
@@ -2078,7 +2531,7 @@ def add_prescription():
             'prescribed_by': ObjectId(doctor_id),
             'last_modified': datetime.now(),
             'tests': data.get('tests', []),
-            'attached_files': data.get('files', [])
+            'attached_files': uploaded_files  # Store actual file info instead of just names
         }
         
         # Update visit with prescription data
@@ -2101,7 +2554,7 @@ def add_prescription():
                     if isinstance(patient['date_of_birth'], str):
                         dob = datetime.strptime(patient['date_of_birth'], '%Y-%m-%d')
                     else:
-                        dob = patient['date_of_birth']
+                        dob = datetime.strptime(patient['date_of_birth'], '%Y-%m-%d') if isinstance(patient['date_of_birth'], str) else patient['date_of_birth']
                     today = datetime.now()
                     patient_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
                 except (ValueError, TypeError):
@@ -2111,7 +2564,7 @@ def add_prescription():
             'visit_id': ObjectId(visit_id),
             'patient_id': visit['patient_id'],
             'patient_name': patient['name'] if patient else 'Unknown',
-            'patient_age': patient_age,  # Use safely calculated age
+            'patient_age': patient_age,
             'doctor_id': visit['doctor_id'],
             'doctor_name': doctor['name'] if doctor else 'Unknown',
             'department_id': visit['department_id'],
@@ -2127,7 +2580,7 @@ def add_prescription():
             'created_at': datetime.now(),
             'status': 'active',
             'tests': data.get('tests', []),
-            'attached_files': data.get('files', [])
+            'attached_files': uploaded_files  # Store actual file info
         }
         
         mongo.db.prescription.insert_one(prescription_record)
@@ -2144,19 +2597,73 @@ def add_prescription():
                 'status': 'completed',
                 'completed_at': datetime.now(),
                 'tests': data.get('tests', []),
-                'attached_files': data.get('files', [])
+                'attached_files': uploaded_files  # Store actual file info
             }},
             upsert=True
         )
         
+        response_data = {'success': True, 'message': 'Prescription added successfully'}
+        
+        if uploaded_files:
+            response_data['files_uploaded'] = len(uploaded_files)
+        
+        if upload_errors:
+            response_data['upload_errors'] = upload_errors
+            response_data['message'] += f" (with {len(upload_errors)} file upload errors)"
+        
         if result.modified_count > 0:
-            return jsonify({'success': True, 'message': 'Prescription added successfully'})
+            return jsonify(response_data)
         else:
             return jsonify({'success': False, 'message': 'Failed to add prescription'})
             
     except Exception as e:
         print(f"Error in add_prescription: {str(e)}")
         return jsonify({'success': False, 'message': f'Error adding prescription: {str(e)}'})
+
+@app.route('/api/prescription/<visit_id>/files/<file_index>')
+@role_required(['doctor', 'admin'])
+def download_prescription_file(visit_id, file_index):
+    try:
+        visit = mongo.db.visit.find_one({'_id': ObjectId(visit_id)})
+        if not visit:
+            return jsonify({'success': False, 'message': 'Visit not found'}), 404
+        
+        attached_files = visit.get('attached_files', [])
+        file_idx = int(file_index)
+        
+        if file_idx >= len(attached_files):
+            return jsonify({'success': False, 'message': 'File not found'}), 404
+        
+        file_info = attached_files[file_idx]
+        file_path = file_info['file_path']
+        
+        # Ensure file path is within upload directory
+        upload_folder = os.path.abspath(app.config['UPLOAD_FOLDER'])
+        requested_path = os.path.abspath(file_path)
+        
+        if not requested_path.startswith(upload_folder):
+            return jsonify({'success': False, 'message': 'Access denied'}), 403
+        
+        if not os.path.exists(file_path):
+            return jsonify({'success': False, 'message': 'File not found on disk'}), 404
+        
+        if os.path.getsize(file_path) == 0:
+            return jsonify({'success': False, 'message': 'File is empty'}), 404
+        
+        mime_type = file_info.get('mime_type', 'application/octet-stream')
+        
+        return send_file(
+            file_path, 
+            as_attachment=True, 
+            download_name=file_info['filename'],
+            mimetype=mime_type
+        )
+        
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Invalid file index'}), 400
+    except Exception as e:
+        logging.error(f"Error downloading prescription file: {str(e)}")
+        return jsonify({'success': False, 'message': f'Error downloading file: {str(e)}'}), 500
 
 @app.route('/admin/patient-report')
 @role_required('admin')
@@ -2357,6 +2864,252 @@ def export_patients():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Export error: {str(e)}'}), 500
 
+@app.route('/doctor/profile')
+@role_required('doctor')
+def doctor_profile():
+    return render_template('doctor_profile.html')
+
+@app.route('/api/doctor/profile')
+@role_required('doctor')
+def get_doctor_profile():
+    try:
+        doctor_username = session.get('username')
+        user_id = session.get('user_id')
+        
+        print(f"[DEBUG] Session data - username: {doctor_username}, user_id: {user_id}")
+        
+        if not doctor_username and not user_id:
+            return jsonify({'success': False, 'message': 'No doctor session found'})
+        
+        doctor = None
+        
+        # Try username first
+        if doctor_username:
+            doctor = mongo.db.doctor.find_one({'username': doctor_username})
+            print(f"[DEBUG] Doctor found by username: {doctor is not None}")
+        
+        # Try user_id if username lookup failed
+        if not doctor and user_id:
+            try:
+                if isinstance(user_id, str):
+                    doctor = mongo.db.doctor.find_one({'_id': ObjectId(user_id)})
+                else:
+                    doctor = mongo.db.doctor.find_one({'_id': user_id})
+                print(f"[DEBUG] Doctor found by user_id: {doctor is not None}")
+            except Exception as id_error:
+                print(f"[DEBUG] Invalid ObjectId: {id_error}")
+        
+        # Try finding by any matching field
+        if not doctor and doctor_username:
+            doctor = mongo.db.doctor.find_one({
+                '$or': [
+                    {'username': doctor_username},
+                    {'email': doctor_username},
+                    {'name': {'$regex': doctor_username, '$options': 'i'}}
+                ]
+            })
+            print(f"[DEBUG] Doctor found by flexible search: {doctor is not None}")
+        
+        if not doctor:
+            print(f"[DEBUG] Creating default doctor profile for session")
+            default_doctor = {
+                'name': 'Dr. ' + (doctor_username or 'Unknown'),
+                'username': doctor_username or 'doctor',
+                'email': '',
+                'phone': '',
+                'room_no': '',
+                'specialization': 'General Medicine',
+                'department_id': None,
+                'created_at': datetime.now()
+            }
+            
+            # Insert default doctor and get the ID
+            result = mongo.db.doctor.insert_one(default_doctor)
+            doctor = mongo.db.doctor.find_one({'_id': result.inserted_id})
+            
+            # Update session with new doctor ID
+            session['user_id'] = str(result.inserted_id)
+            print(f"[DEBUG] Created default doctor with ID: {result.inserted_id}")
+        
+        # Get department info
+        department = None
+        if doctor.get('department_id'):
+            try:
+                if isinstance(doctor['department_id'], str):
+                    department = mongo.db.department.find_one({'_id': ObjectId(doctor['department_id'])})
+                else:
+                    department = mongo.db.department.find_one({'_id': doctor['department_id']})
+            except Exception as dept_error:
+                print(f"[DEBUG] Department lookup error: {dept_error}")
+        
+        total_patients = 0
+        try:
+            total_patients = mongo.db.visit.count_documents({
+                'doctor_id': doctor['_id'], 
+                'status': {'$in': ['completed', 'prescribed']}
+            })
+        except Exception as stats_error:
+            print(f"[DEBUG] Stats calculation error: {stats_error}")
+        
+        doctor_data = {
+            '_id': str(doctor['_id']),
+            'name': doctor.get('name', 'Unknown Doctor'),
+            'username': doctor.get('username', 'Unknown'),
+            'email': doctor.get('email', ''),
+            'phone': doctor.get('phone', ''),
+            'room_no': doctor.get('room_no', ''),
+            'specialization': doctor.get('specialization', 'General Medicine'),
+            'department_name': department.get('department_name', 'General Medicine') if department else 'General Medicine',
+            'department_id': str(doctor.get('department_id', '')),
+            'created_at': doctor.get('created_at', datetime.now()).strftime('%Y-%m-%d') if doctor.get('created_at') else '',
+            'total_patients': total_patients
+        }
+        
+        print(f"[DEBUG] Returning doctor data for: {doctor_data['name']}")
+        return jsonify({'success': True, 'doctor': doctor_data})
+        
+    except Exception as e:
+        print(f"[ERROR] Doctor profile error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Database error: {str(e)}'})
+
+@app.route('/api/visit/update-prescription-image', methods=['POST'])
+@role_required('doctor')
+def update_visit_prescription_image():
+    try:
+        data = request.get_json()
+        visit_id = data.get('visit_id')
+        prescription_image = data.get('prescription_image')
+        
+        if not visit_id or not prescription_image:
+            return jsonify({'success': False, 'message': 'Missing required data'})
+        
+        # Update the visit with prescription image path
+        result = mongo.db.visit.update_one(
+            {'_id': ObjectId(visit_id)},
+            {'$set': {'prescription_image': prescription_image}}
+        )
+        
+        if result.modified_count > 0:
+            return jsonify({'success': True, 'message': 'Prescription image updated'})
+        else:
+            return jsonify({'success': False, 'message': 'Visit not found or not updated'})
+            
+    except Exception as e:
+        print(f"[ERROR] Update prescription image error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/doctor/statistics')
+@role_required('doctor')
+def get_doctor_statistics():
+    try:
+        doctor_user_id = session.get('user_id')
+        doctor = mongo.db.doctor.find_one({'_id': ObjectId(doctor_user_id)})
+        
+        if not doctor:
+            return jsonify({'success': False, 'message': 'Doctor not found'})
+        
+        doctor_id = doctor['_id']
+        
+        # Count total patients treated
+        total_patients = mongo.db.visit.count_documents({
+            'doctor_id': doctor_id, 
+            'status': {'$in': ['completed', 'prescribed']}
+        })
+        
+        # Count today's patients
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        tomorrow = today + timedelta(days=1)
+        today_patients = mongo.db.visit.count_documents({
+            'doctor_id': doctor_id,
+            'visit_date': {'$gte': today, '$lt': tomorrow}
+        })
+        
+        # Count completed patients (today)
+        completed_patients = mongo.db.visit.count_documents({
+            'doctor_id': doctor_id,
+            'visit_date': {'$gte': today, '$lt': tomorrow},
+            'status': {'$in': ['completed', 'prescribed']}
+        })
+        
+        # Count pending patients (today)
+        pending_patients = mongo.db.visit.count_documents({
+            'doctor_id': doctor_id,
+            'visit_date': {'$gte': today, '$lt': tomorrow},
+            'status': {'$in': ['assigned', 'in_progress', 'pending']}
+        })
+        
+        # Count total prescriptions
+        total_prescriptions = mongo.db.prescription.count_documents({'doctor_id': doctor_id})
+        if total_prescriptions == 0:
+            total_prescriptions = mongo.db.visit.count_documents({
+                'doctor_id': doctor_id,
+                'status': {'$in': ['completed', 'prescribed']},
+                '$or': [
+                    {'medications': {'$exists': True, '$ne': ''}},
+                    {'diagnosis': {'$exists': True, '$ne': ''}}
+                ]
+            })
+        
+        stats = {
+            'total_patients': total_patients,
+            'today_patients': today_patients,
+            'completed_patients': completed_patients,
+            'pending_patients': pending_patients,
+            'total_prescriptions': total_prescriptions
+        }
+        
+        return jsonify({'success': True, 'stats': stats})
+        
+    except Exception as e:
+        print(f"Statistics error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/doctor/profile/update', methods=['PUT'])
+@role_required('doctor')
+def update_doctor_profile():
+    try:
+        data = request.get_json()
+        doctor_username = session.get('username')
+        
+        # Check if username is being changed and if it's unique
+        if data.get('username') != doctor_username:
+            existing_doctor = mongo.db.doctor.find_one({'username': data.get('username')})
+            existing_admin = mongo.db.admin.find_one({'username': data.get('username')})
+            
+            if existing_doctor or existing_admin:
+                return jsonify({'success': False, 'message': 'Username already exists'})
+        
+        # Update doctor profile
+        update_data = {
+            'name': data.get('name'),
+            'username': data.get('username'),
+            'email': data.get('email'),
+            'phone': data.get('phone'),
+            'specialization': data.get('specialization'),
+            'room_no': data.get('room_no'),
+            'updated_at': datetime.now()
+        }
+        
+        result = mongo.db.doctor.update_one(
+            {'username': doctor_username},
+            {'$set': update_data}
+        )
+        
+        if result.modified_count > 0:
+            # Update session username if it was changed
+            if data.get('username') != doctor_username:
+                session['username'] = data.get('username')
+            
+            return jsonify({'success': True, 'message': 'Profile updated successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'No changes made'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+# The first instance at line 1113 is kept as it uses user_id which is more reliable
+
 if __name__ == '__main__':
-    cleanup_old_files()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)

@@ -299,6 +299,16 @@
         </div>
     </div>
 </div>
+
+<!-- Prescription Image Modal -->
+<div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 hidden z-50 flex items-center justify-center">
+    <div class="max-w-4xl max-h-full p-4">
+        <img id="modalImage" src="/placeholder.svg" alt="Prescription" class="max-w-full max-h-full object-contain">
+        <button onclick="closeImageModal()" class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -552,36 +562,136 @@ class PatientManagement {
             const container = document.getElementById('visitHistoryContainer');
             
             if (data.success && data.visits && data.visits.length > 0) {
-                container.innerHTML = data.visits.map(visit => `
-                    <div class="bg-white rounded-lg p-4 mb-3 border border-gray-200">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="flex items-center">
-                                <i class="fas fa-calendar text-blue-500 mr-2"></i>
-                                <span class="font-medium">${new Date(visit.visit_date_time).toLocaleDateString()}</span>
-                            </div>
-                            <span class="px-2 py-1 text-xs rounded-full ${
-                                visit.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                            }">
-                                ${visit.status}
-                            </span>
-                        </div>
-                        <div class="grid md:grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <strong>Doctor:</strong> ${visit.doctor_name}<br>
-                                <strong>Department:</strong> ${visit.department_name}
-                            </div>
-                            <div>
-                                <strong>Diagnosis:</strong> ${visit.diagnosis || 'Not provided'}<br>
-                                <strong>Follow-up:</strong> ${visit.follow_up_date || 'None scheduled'}
-                            </div>
-                        </div>
-                        ${visit.medications ? `
+                container.innerHTML = data.visits.map(visit => {
+                    let visitDateDisplay = 'Date not available';
+                    
+                    const dateFields = ['visit_date', 'visit_date_time', 'created_at', 'prescription_timestamp'];
+                    
+                    for (const field of dateFields) {
+                        if (visit[field]) {
+                            try {
+                                let dateValue = visit[field];
+                                
+                                // Handle different date formats
+                                if (typeof dateValue === 'string') {
+                                    // Try parsing ISO string or other formats
+                                    const parsedDate = new Date(dateValue);
+                                    if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1900) {
+                                        visitDateDisplay = parsedDate.toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        });
+                                        break;
+                                    }
+                                } else if (dateValue instanceof Date) {
+                                    if (!isNaN(dateValue.getTime()) && dateValue.getFullYear() > 1900) {
+                                        visitDateDisplay = dateValue.toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        });
+                                        break;
+                                    }
+                                } else if (typeof dateValue === 'object' && dateValue.$date) {
+                                    // Handle MongoDB date objects
+                                    const mongoDate = new Date(dateValue.$date);
+                                    if (!isNaN(mongoDate.getTime()) && mongoDate.getFullYear() > 1900) {
+                                        visitDateDisplay = mongoDate.toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        });
+                                        break;
+                                    }
+                                }
+                            } catch (e) {
+                                console.log(`[v0] Error parsing date in ${field}:`, visit[field], e);
+                            }
+                        }
+                    }
+                    
+                    if (visitDateDisplay === 'Date not available') {
+                        try {
+                            // Try to extract timestamp from MongoDB ObjectId
+                            if (visit.visit_id && visit.visit_id.length === 24) {
+                                const timestamp = parseInt(visit.visit_id.substring(0, 8), 16) * 1000;
+                                const objectIdDate = new Date(timestamp);
+                                if (!isNaN(objectIdDate.getTime()) && objectIdDate.getFullYear() > 2020) {
+                                    visitDateDisplay = objectIdDate.toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric'
+                                    }) + ' (estimated)';
+                                }
+                            }
+                        } catch (e) {
+                            console.log('[v0] Could not extract date from ObjectId:', e);
+                        }
+                    }
+                    
+                    let prescriptionImageHtml = '';
+                    if (visit.prescription_image) {
+                        prescriptionImageHtml = `
                             <div class="mt-2 text-sm">
-                                <strong>Medications:</strong> ${visit.medications}
+                                <strong>Prescription Image:</strong><br>
+                                <img src="${visit.prescription_image}" alt="Prescription" class="max-w-full h-32 object-contain border rounded mt-1 cursor-pointer" onclick="showImageModal('${visit.prescription_image}')">
                             </div>
-                        ` : ''}
-                    </div>
-                `).join('');
+                        `;
+                    } else if (visit.attached_files && visit.attached_files.length > 0) {
+                        const imageFiles = visit.attached_files.filter(file => 
+                            file.mime_type && file.mime_type.startsWith('image/')
+                        );
+                        if (imageFiles.length > 0) {
+                            prescriptionImageHtml = `
+                                <div class="mt-2 text-sm">
+                                    <strong>Prescription Images:</strong><br>
+                                    ${imageFiles.map(file => `
+                                        <img src="/uploads/prescriptions/${file.stored_filename}" alt="Prescription" class="max-w-full h-32 object-contain border rounded mt-1 mr-2 cursor-pointer inline-block" onclick="showImageModal('/uploads/prescriptions/${file.stored_filename}')">
+                                    `).join('')}
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    return `
+                        <div class="bg-white rounded-lg p-4 mb-3 border border-gray-200">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex items-center">
+                                    <i class="fas fa-calendar text-blue-500 mr-2"></i>
+                                    <span class="font-medium">${visitDateDisplay}</span>
+                                </div>
+                                <span class="px-2 py-1 text-xs rounded-full ${
+                                    visit.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                }">
+                                    ${visit.status}
+                                </span>
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <strong>Doctor:</strong> ${visit.doctor_name || 'Unknown'}<br>
+                                    <strong>Department:</strong> ${visit.department_name || 'Unknown'}
+                                </div>
+                                <div>
+                                    <strong>Diagnosis:</strong> ${visit.diagnosis || 'Not provided'}<br>
+                                    <strong>Follow-up:</strong> ${visit.follow_up_date ? new Date(visit.follow_up_date).toLocaleDateString() : 'None scheduled'}
+                                </div>
+                            </div>
+                            ${visit.medications ? `
+                                <div class="mt-2 text-sm">
+                                    <strong>Medications:</strong> ${visit.medications}
+                                </div>
+                            ` : ''}
+                            ${prescriptionImageHtml}
+                        </div>
+                    `;
+                }).join('');
             } else {
                 container.innerHTML = `
                     <div class="text-center py-8 text-gray-500">
@@ -591,6 +701,7 @@ class PatientManagement {
                 `;
             }
         } catch (error) {
+            console.error('[v0] Error loading patient history:', error);
             document.getElementById('visitHistoryContainer').innerHTML = `
                 <div class="text-center py-4 text-red-500">
                     <i class="fas fa-exclamation-triangle mr-2"></i>Error loading visit history
@@ -729,5 +840,23 @@ let patientMgmt;
 document.addEventListener('DOMContentLoaded', () => {
     patientMgmt = new PatientManagement();
 });
+
+// Function to show prescription images in modal
+function showImageModal(imageSrc) {
+    const modal = document.getElementById('imageModal');
+    if (modal) {
+        document.getElementById('modalImage').src = imageSrc;
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+}
 </script>
 {% endblock %}

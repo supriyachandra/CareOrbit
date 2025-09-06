@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Profile - CareOrbit{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <i class="fas fa-user-circle text-2xl text-blue-600 mr-3"></i>
+                    <h1 class="text-2xl font-bold text-gray-900">My Profile</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/doctor/dashboard" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                    </a>
+                    <button onclick="logout()" class="logout-btn bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Profile Card -->
+        <div class="bg-white rounded-xl shadow-lg mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-800">Doctor Information</h2>
+            </div>
+            
+            <div class="p-6">
+                <div class="flex items-center mb-6">
+                    <div class="h-20 w-20 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-center mr-6">
+                        <i class="fas fa-user-md text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-900" id="doctorName">Loading...</h3>
+                        <p class="text-gray-600" id="doctorDepartment">Loading...</p>
+                        <p class="text-sm text-gray-500" id="doctorUsername">@loading</p>
+                    </div>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Personal Information -->
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-3">
+                            <i class="fas fa-user mr-2"></i>Personal Information
+                        </h4>
+                        <div class="space-y-2">
+                            <div><strong>Full Name:</strong> <span id="profileName">Loading...</span></div>
+                            <div><strong>Username:</strong> <span id="profileUsername">Loading...</span></div>
+                            <div><strong>Email:</strong> <span id="profileEmail">Not provided</span></div>
+                            <div><strong>Phone:</strong> <span id="profilePhone">Not provided</span></div>
+                            <div><strong>Room Number:</strong> <span id="profileRoom">Not assigned</span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Professional Information -->
+                    <div class="bg-green-50 rounded-lg p-4">
+                        <h4 class="text-lg font-semibold text-green-800 mb-3">
+                            <i class="fas fa-stethoscope mr-2"></i>Professional Information
+                        </h4>
+                        <div class="space-y-2">
+                            <div><strong>Department:</strong> <span id="profileDepartmentName">Loading...</span></div>
+                            <div><strong>Specialization:</strong> <span id="profileSpecialization">Loading...</span></div>
+                            <div><strong>Join Date:</strong> <span id="profileJoinDate">Loading...</span></div>
+                            <div><strong>Total Patients Treated:</strong> <span id="profileTotalPatients">0</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-4 mt-6 pt-6 border-t">
+                    <button id="changePasswordBtn" class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                        <i class="fas fa-key mr-2"></i>Change Password
+                    </button>
+                    <button id="editProfileBtn" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-edit mr-2"></i>Edit Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Card -->
+        <div class="bg-white rounded-xl shadow-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-800">My Statistics</h2>
+            </div>
+            
+            <div class="p-6">
+                <div class="grid md:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="p-4 rounded-full bg-blue-100 text-blue-600 w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-users text-xl"></i>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-900" id="statTotalPatients">0</p>
+                        <p class="text-sm text-gray-600">Total Patients</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="p-4 rounded-full bg-green-100 text-green-600 w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-calendar-day text-xl"></i>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-900" id="statTodayPatients">0</p>
+                        <p class="text-sm text-gray-600">Today's Patients</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="p-4 rounded-full bg-purple-100 text-purple-600 w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-prescription-bottle-alt text-xl"></i>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-900" id="statPrescriptions">0</p>
+                        <p class="text-sm text-gray-600">Prescriptions Written</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="p-4 rounded-full bg-yellow-100 text-yellow-600 w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-star text-xl"></i>
+                        </div>
+                        <p class="text-2xl font-bold text-gray-900" id="statExperience">0</p>
+                        <p class="text-sm text-gray-600">Years Experience</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div id="editProfileModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-gray-800">Edit Profile</h3>
+                <button id="closeEditProfileModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form id="editProfileForm" class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                        <input type="text" id="editName" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Username *</label>
+                        <input type="text" id="editUsername" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" id="editEmail" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                        <input type="tel" id="editPhone" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Specialization *</label>
+                        <input type="text" id="editSpecialization" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Room Number</label>
+                        <input type="text" id="editRoom" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div class="md:col-span-2 flex justify-end space-x-4 pt-6 border-t">
+                        <button type="button" id="cancelEditProfileBtn" 
+                                class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-save mr-2"></i>Update Profile
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="changePasswordModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-gray-800">Change Password</h3>
+                <button id="closePasswordModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <form id="changePasswordForm">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Password *</label>
+                        <input type="password" id="currentPassword" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Enter current password">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">New Password *</label>
+                        <input type="password" id="newPassword" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Enter new password">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password *</label>
+                        <input type="password" id="confirmPassword" required 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Confirm new password">
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" id="cancelPasswordBtn" 
+                                class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                            <i class="fas fa-key mr-2"></i>Change Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function logout() {
+    fetch('/api/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            window.location.href = '/';
+        }
+    })
+    .catch(function(error) {
+        showAlert('Error logging out', 'error');
+    });
+}
+
+class DoctorProfile {
+    constructor() {
+        this.currentDoctor = null;
+        this.initializeEventListeners();
+        this.loadProfile();
+    }
+
+    initializeEventListeners() {
+        // Profile buttons
+        document.getElementById('editProfileBtn').addEventListener('click', () => this.showEditProfileModal());
+        document.getElementById('changePasswordBtn').addEventListener('click', () => this.showChangePasswordModal());
+        
+        // Edit profile modal controls
+        document.getElementById('closeEditProfileModal').addEventListener('click', () => this.closeEditProfileModal());
+        document.getElementById('cancelEditProfileBtn').addEventListener('click', () => this.closeEditProfileModal());
+        document.getElementById('editProfileForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.updateProfile();
+        });
+        
+        // Password modal controls
+        document.getElementById('closePasswordModal').addEventListener('click', () => this.closePasswordModal());
+        document.getElementById('cancelPasswordBtn').addEventListener('click', () => this.closePasswordModal());
+        document.getElementById('changePasswordForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.changePassword();
+        });
+    }
+
+    async loadProfile() {
+        try {
+            console.log('[v0] Loading doctor profile...');
+            
+            const response = await fetch('/api/doctor/profile');
+            console.log('[v0] Profile API response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('[v0] Profile data received:', data);
+            
+            if (data.success) {
+                this.currentDoctor = data.doctor;
+                this.populateProfile(data.doctor);
+                this.loadStatistics();
+            } else {
+                console.error('[v0] Profile API returned error:', data.message);
+                showAlert(data.message || 'Error loading profile', 'error');
+                
+                this.showFallbackProfile();
+            }
+        } catch (error) {
+            console.error('[v0] Error loading profile:', error);
+            showAlert('Error loading profile: ' + error.message, 'error');
+            
+            this.showFallbackProfile();
+        }
+    }
+
+    showFallbackProfile() {
+        // Show basic profile with loading states replaced by "Not available"
+        document.getElementById('doctorName').textContent = 'Profile Loading Error';
+        document.getElementById('doctorDepartment').textContent = 'Please refresh the page';
+        document.getElementById('doctorUsername').textContent = '@error';
+        
+        // Profile card information
+        document.getElementById('profileName').textContent = 'Not available';
+        document.getElementById('profileUsername').textContent = 'Not available';
+        document.getElementById('profileEmail').textContent = 'Not available';
+        document.getElementById('profilePhone').textContent = 'Not available';
+        document.getElementById('profileRoom').textContent = 'Not available';
+        document.getElementById('profileDepartmentName').textContent = 'Not available';
+        document.getElementById('profileSpecialization').textContent = 'Not available';
+        document.getElementById('profileJoinDate').textContent = 'Not available';
+        document.getElementById('profileTotalPatients').textContent = '0';
+    }
+
+    populateProfile(doctor) {
+        // Header information
+        document.getElementById('doctorName').textContent = doctor.name;
+        document.getElementById('doctorDepartment').textContent = doctor.department_name || 'Unknown Department';
+        document.getElementById('doctorUsername').textContent = '@' + doctor.username;
+        
+        // Profile card information
+        document.getElementById('profileName').textContent = doctor.name;
+        document.getElementById('profileUsername').textContent = doctor.username;
+        document.getElementById('profileEmail').textContent = doctor.email || 'Not provided';
+        document.getElementById('profilePhone').textContent = doctor.phone || 'Not provided';
+        document.getElementById('profileRoom').textContent = doctor.room_no || 'Not assigned';
+        document.getElementById('profileDepartmentName').textContent = doctor.department_name || 'Unknown Department';
+        document.getElementById('profileSpecialization').textContent = doctor.specialization || 'Not specified';
+        document.getElementById('profileJoinDate').textContent = doctor.created_at ? new Date(doctor.created_at).toLocaleDateString() : 'Unknown';
+        document.getElementById('profileTotalPatients').textContent = doctor.total_patients || 0;
+    }
+
+    async loadStatistics() {
+        try {
+            console.log('[v0] Loading doctor statistics...');
+            
+            const response = await fetch('/api/doctor/statistics');
+            
+            if (!response.ok) {
+                console.warn('[v0] Statistics API failed, using defaults');
+                return; // Don't throw error, just use default values
+            }
+            
+            const data = await response.json();
+            console.log('[v0] Statistics data received:', data);
+            
+            if (data.success) {
+                document.getElementById('statTotalPatients').textContent = data.stats.total_patients || 0;
+                document.getElementById('statTodayPatients').textContent = data.stats.today_patients || 0;
+                document.getElementById('statPrescriptions').textContent = data.stats.total_prescriptions || 0;
+                
+                // Calculate years of experience
+                if (this.currentDoctor && this.currentDoctor.created_at) {
+                    const joinDate = new Date(this.currentDoctor.created_at);
+                    const now = new Date();
+                    const years = Math.floor((now - joinDate) / (365.25 * 24 * 60 * 60 * 1000));
+                    document.getElementById('statExperience').textContent = Math.max(0, years);
+                }
+            }
+        } catch (error) {
+            console.error('[v0] Error loading statistics:', error);
+            // Don't show error alert for statistics, just keep default values
+        }
+    }
+
+    showEditProfileModal() {
+        if (this.currentDoctor) {
+            document.getElementById('editName').value = this.currentDoctor.name;
+            document.getElementById('editUsername').value = this.currentDoctor.username;
+            document.getElementById('editEmail').value = this.currentDoctor.email || '';
+            document.getElementById('editPhone').value = this.currentDoctor.phone || '';
+            document.getElementById('editSpecialization').value = this.currentDoctor.specialization || '';
+            document.getElementById('editRoom').value = this.currentDoctor.room_no || '';
+            
+            document.getElementById('editProfileModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    closeEditProfileModal() {
+        document.getElementById('editProfileModal').classList.add('hidden');
+        document.getElementById('editProfileForm').reset();
+        document.body.style.overflow = 'auto';
+    }
+
+    async updateProfile() {
+        const formData = {
+            name: document.getElementById('editName').value.trim(),
+            username: document.getElementById('editUsername').value.trim(),
+            email: document.getElementById('editEmail').value.trim(),
+            phone: document.getElementById('editPhone').value.trim(),
+            specialization: document.getElementById('editSpecialization').value.trim(),
+            room_no: document.getElementById('editRoom').value.trim()
+        };
+
+        if (!formData.name || !formData.username || !formData.specialization) {
+            showAlert('Please fill in all required fields', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/doctor/profile/update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Profile updated successfully', 'success');
+                this.closeEditProfileModal();
+                this.loadProfile(); // Reload to show updated data
+            } else {
+                showAlert(data.message || 'Error updating profile', 'error');
+            }
+        } catch (error) {
+            showAlert('Error updating profile', 'error');
+        }
+    }
+
+    showChangePasswordModal() {
+        document.getElementById('changePasswordModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    closePasswordModal() {
+        document.getElementById('changePasswordModal').classList.add('hidden');
+        document.getElementById('changePasswordForm').reset();
+        document.body.style.overflow = 'auto';
+    }
+
+    async changePassword() {
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            showAlert('Please fill in all fields', 'error');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            showAlert('New passwords do not match', 'error');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            showAlert('New password must be at least 6 characters long', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/doctor/change-password', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    current_password: currentPassword,
+                    new_password: newPassword
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert('Password changed successfully', 'success');
+                this.closePasswordModal();
+            } else {
+                showAlert(data.message || 'Error changing password', 'error');
+            }
+        } catch (error) {
+            showAlert('Error changing password', 'error');
+        }
+    }
+}
+
+function showAlert(message, type) {
+    alert(message);
+}
+
+// Initialize doctor profile
+let doctorProfile;
+document.addEventListener('DOMContentLoaded', () => {
+    doctorProfile = new DoctorProfile();
+});
+</script>
+{% endblock %}

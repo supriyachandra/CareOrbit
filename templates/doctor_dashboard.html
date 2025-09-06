@@ -8,11 +8,19 @@
     <header class="bg-white shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
-                    <p class="text-gray-600">Welcome, {{ doctor_info.name if doctor_info else session.username }} - {{ doctor_info.department if doctor_info else 'Department' }}</p>
+                <div class="flex items-center">
+                    <!-- Added circular profile button at top left next to Doctor Dashboard text -->
+                    <button onclick="window.location.href='/doctor/profile'" 
+                            class="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors mr-4 shadow-sm">
+                        <i class="fas fa-user-md text-sm"></i>
+                    </button>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
+                        <p class="text-gray-600">Welcome, {{ doctor_info.name if doctor_info else session.username }} - {{ doctor_info.department if doctor_info else 'Department' }}</p>
+                    </div>
                 </div>
                 <div class="flex items-center space-x-4">
+                    <!-- Removed the old profile button from right side -->
                     <button onclick="showPastPatients()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
                         <i class="fas fa-history mr-2"></i>Past Patients
                     </button>
@@ -999,26 +1007,32 @@ document.getElementById('prescriptionForm').addEventListener('submit', function(
         return;
     }
     
-    var prescriptionData = {
-        visit_id: visitId,
-        symptoms: symptoms,
-        diagnosis: diagnosis,
-        medications: medications,
-        instructions: instructions,
-        follow_up_date: followUpDate,
-        tests: pendingTests,
-        files: uploadedFiles.map(function(f) { return f.name; }) // Just file names for now
-    };
+    var formData = new FormData();
+    formData.append('visit_id', visitId);
+    formData.append('symptoms', symptoms);
+    formData.append('diagnosis', diagnosis);
+    formData.append('medications', medications);
+    formData.append('instructions', instructions);
+    formData.append('follow_up_date', followUpDate);
     
+    // Add tests data
+    formData.append('tests', JSON.stringify(pendingTests));
+    
+    // Add uploaded files
+    for (var i = 0; i < uploadedFiles.length; i++) {
+        formData.append('files', uploadedFiles[i].file);
+    }
+
+    var prescriptionData = null;
+
     fetch('/api/prescription/add', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(prescriptionData)
+        body: formData  // Send FormData instead of JSON
     })
     .then(function(response) { return response.json(); })
     .then(function(data) {
+        prescriptionData = data;
+        
         if (data.success) {
             if (pendingTests.length > 0) {
                 return saveAllTests(visitId);
@@ -1030,7 +1044,14 @@ document.getElementById('prescriptionForm').addEventListener('submit', function(
         }
     })
     .then(function() {
-        alert('Prescription saved successfully');
+        var message = 'Prescription saved successfully';
+        if (prescriptionData.files_uploaded) {
+            message += ` with ${prescriptionData.files_uploaded} file(s) uploaded`;
+        }
+        if (prescriptionData.upload_errors && prescriptionData.upload_errors.length > 0) {
+            message += `\nNote: ${prescriptionData.upload_errors.length} file(s) had upload errors`;
+        }
+        alert(message);
         closePrescriptionModal();
         location.reload();
     })
