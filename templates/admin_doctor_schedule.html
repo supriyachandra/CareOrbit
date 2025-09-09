@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Schedule - CareOrbit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-900">Doctor Schedule</h1>
+                        <span class="ml-4 text-sm text-gray-500" id="doctorNameHeader">Loading...</span>
+                    </div>
+                    <button onclick="window.close()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                        <i class="fas fa-times mr-2"></i>Close
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center space-x-4">
+                        <button onclick="previousMonth()" class="p-2 text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h4 id="currentMonthYear" class="text-xl font-semibold text-gray-800"></h4>
+                        <button onclick="nextMonth()" class="p-2 text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2 text-sm">
+                        <div class="flex items-center">
+                            <div class="w-4 h-4 bg-green-200 rounded mr-2"></div>
+                            <span>Available</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-4 h-4 bg-gray-200 rounded mr-2"></div>
+                            <span>Not Available</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-7 gap-1 mb-4">
+                    <div class="p-3 text-center font-semibold text-gray-600">Sun</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Mon</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Tue</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Wed</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Thu</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Fri</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Sat</div>
+                </div>
+                
+                <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+                    <!-- Calendar days will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Details Modal -->
+    <div id="scheduleDetailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-gray-900">Schedule Details</h3>
+                        <button onclick="closeScheduleDetails()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="mb-4">
+                        <h4 id="selectedDateDisplay" class="text-lg font-medium text-gray-800 mb-4"></h4>
+                    </div>
+                    <div id="timeSlotsList" class="space-y-2">
+                        <!-- Time slots will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var currentCalendarDate = new Date();
+        var doctorId = null;
+        var doctorName = null;
+        var doctorSchedule = {};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            doctorId = urlParams.get('doctor_id');
+            doctorName = urlParams.get('doctor_name');
+            
+            if (doctorName) {
+                document.getElementById('doctorNameHeader').textContent = doctorName + "'s Schedule";
+            }
+            
+            loadDoctorSchedule();
+            renderCalendar();
+        });
+
+        function previousMonth() {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+            loadDoctorSchedule();
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+            loadDoctorSchedule();
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            var year = currentCalendarDate.getFullYear();
+            var month = currentCalendarDate.getMonth();
+            
+            document.getElementById('currentMonthYear').textContent = 
+                currentCalendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
+            var firstDay = new Date(year, month, 1);
+            var lastDay = new Date(year, month + 1, 0);
+            var startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            var calendarGrid = document.getElementById('calendarGrid');
+            calendarGrid.innerHTML = '';
+            
+            for (var i = 0; i < 42; i++) {
+                var currentDate = new Date(startDate);
+                currentDate.setDate(startDate.getDate() + i);
+                
+                var dayElement = document.createElement('div');
+                dayElement.className = 'p-3 text-center border border-gray-200 min-h-[80px] flex flex-col justify-between';
+                
+                var isCurrentMonth = currentDate.getMonth() === month;
+                var isToday = currentDate.toDateString() === new Date().toDateString();
+                var dateKey = currentDate.toISOString().split('T')[0];
+                var hasSchedule = doctorSchedule[dateKey] && doctorSchedule[dateKey].length > 0;
+                
+                if (!isCurrentMonth) {
+                    dayElement.className += ' text-gray-400 bg-gray-50';
+                } else if (isToday) {
+                    dayElement.className += ' bg-blue-100 text-blue-800 font-semibold';
+                }
+                
+                if (hasSchedule && isCurrentMonth) {
+                    dayElement.className += ' bg-green-200 text-green-800 cursor-pointer hover:bg-green-300';
+                    dayElement.onclick = function(date) {
+                        return function() { showScheduleDetails(date); };
+                    }(new Date(currentDate));
+                }
+                
+                var timeSlotDisplay = '';
+                if (hasSchedule && doctorSchedule[dateKey]) {
+                    var slots = doctorSchedule[dateKey];
+                    if (slots.length <= 2) {
+                        timeSlotDisplay = slots.map(function(slot) {
+                            return '<div class="text-xs">' + formatTimeSlot(slot) + '</div>';
+                        }).join('');
+                    } else {
+                        timeSlotDisplay = '<div class="text-xs">' + slots.length + ' slots</div>';
+                    }
+                }
+                
+                dayElement.innerHTML = 
+                    '<div class="font-medium">' + currentDate.getDate() + '</div>' +
+                    '<div class="flex-1 flex flex-col justify-center">' + timeSlotDisplay + '</div>';
+                
+                calendarGrid.appendChild(dayElement);
+            }
+        }
+
+        function showScheduleDetails(date) {
+            var dateKey = date.toISOString().split('T')[0];
+            var timeSlots = doctorSchedule[dateKey] || [];
+            
+            document.getElementById('selectedDateDisplay').textContent = 
+                date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            var timeSlotsList = document.getElementById('timeSlotsList');
+            if (timeSlots.length > 0) {
+                timeSlotsList.innerHTML = timeSlots.map(function(slot) {
+                    return '<div class="p-2 bg-green-100 text-green-800 rounded text-center">' + 
+                           formatTimeSlot(slot) + '</div>';
+                }).join('');
+            } else {
+                timeSlotsList.innerHTML = '<div class="text-center text-gray-500">No availability set for this date</div>';
+            }
+            
+            document.getElementById('scheduleDetailsModal').classList.remove('hidden');
+        }
+
+        function closeScheduleDetails() {
+            document.getElementById('scheduleDetailsModal').classList.add('hidden');
+        }
+
+        function formatTimeSlot(slot) {
+            var times = slot.split('-');
+            var startTime = times[0];
+            var endTime = times[1];
+            
+            function formatTime(time) {
+                var hour = parseInt(time.split(':')[0]);
+                var minute = time.split(':')[1];
+                var ampm = hour >= 12 ? 'PM' : 'AM';
+                hour = hour % 12;
+                hour = hour ? hour : 12;
+                return hour + ':' + minute + ' ' + ampm;
+            }
+            
+            return formatTime(startTime) + ' - ' + formatTime(endTime);
+        }
+
+        function loadDoctorSchedule() {
+            if (!doctorId) return;
+            
+            var year = currentCalendarDate.getFullYear();
+            var month = currentCalendarDate.getMonth() + 1;
+            
+            fetch('/api/admin/doctor/' + doctorId + '/schedule?year=' + year + '&month=' + month)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        doctorSchedule = data.schedule || {};
+                        renderCalendar();
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error loading schedule:', error);
+                });
+        }
+    </script>
+</body>
+</html>

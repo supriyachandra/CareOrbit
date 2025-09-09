@@ -117,13 +117,26 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button class="assign-btn bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                                        data-doctor-id="${doctor._id}" data-doctor-name="${doctor.name}">
-                                    <i class="fas fa-user-plus mr-2"></i>Assign Patient
-                                </button>
+                                <div class="flex space-x-2">
+                                    <!-- Added SCHEDULE button before Assign Patient button -->
+                                    <button class="schedule-btn bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+                                            data-doctor-id="${doctor._id}" data-doctor-name="${doctor.name}">
+                                        <i class="fas fa-calendar-alt mr-1"></i>Schedule
+                                    </button>
+                                    <button class="assign-btn bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                                            data-doctor-id="${doctor._id}" data-doctor-name="${doctor.name}">
+                                        <i class="fas fa-user-plus mr-1"></i>Assign Patient
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     `).join('');
+
+                    document.querySelectorAll('.schedule-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            this.viewDoctorSchedule(btn.dataset.doctorId, btn.dataset.doctorName);
+                        });
+                    });
 
                     // Add event listeners to assign buttons
                     document.querySelectorAll('.assign-btn').forEach(btn => {
@@ -160,6 +173,12 @@
                 } catch (error) {
                     alert('Error assigning patient');
                 }
+            }
+
+            viewDoctorSchedule(doctorId, doctorName) {
+                // Open doctor schedule in a new window/modal
+                window.open(`/admin/doctor-schedule?doctor_id=${doctorId}&doctor_name=${encodeURIComponent(doctorName)}`, 
+                           'doctorSchedule', 'width=1000,height=700,scrollbars=yes');
             }
         }
 

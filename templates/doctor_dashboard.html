@@ -24,6 +24,10 @@
                     <button onclick="showPastPatients()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
                         <i class="fas fa-history mr-2"></i>Past Patients
                     </button>
+                    <!-- Added calendar button before logout -->
+                    <button onclick="openCalendar()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+                        <i class="fas fa-calendar-alt mr-2"></i>Schedule
+                    </button>
                     <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
                     </button>
@@ -367,6 +371,129 @@
                 <div class="text-center py-8">
                     <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-4"></i>
                     <p class="text-gray-500">Loading past patients...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Added Doctor Calendar Modal -->
+<div id="doctorCalendarModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-screen overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-900">My Schedule - Set Availability</h3>
+                    <button onclick="closeDoctorCalendar()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center space-x-4">
+                        <button onclick="previousMonth()" class="p-2 text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h4 id="currentMonthYear" class="text-xl font-semibold text-gray-800"></h4>
+                        <button onclick="nextMonth()" class="p-2 text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2 text-sm">
+                        <div class="flex items-center">
+                            <div class="w-4 h-4 bg-green-200 rounded mr-2"></div>
+                            <span>Available</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-4 h-4 bg-gray-200 rounded mr-2"></div>
+                            <span>Not Set</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-7 gap-1 mb-4">
+                    <div class="p-3 text-center font-semibold text-gray-600">Sun</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Mon</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Tue</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Wed</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Thu</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Fri</div>
+                    <div class="p-3 text-center font-semibold text-gray-600">Sat</div>
+                </div>
+                
+                <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+                    <!-- Calendar days will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Added Time Slot Modal -->
+<div id="timeSlotModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-[70]">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-900">Set Availability</h3>
+                    <button onclick="closeTimeSlotModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="mb-4">
+                    <h4 id="selectedDateDisplay" class="text-lg font-medium text-gray-800 mb-4"></h4>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Available Time Slots</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" class="time-slot" value="09:00-10:00" class="mr-2">
+                                <span class="ml-2 text-sm">9:00 AM - 10:00 AM</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="time-slot" value="10:00-11:00" class="mr-2">
+                                <span class="ml-2 text-sm">10:00 AM - 11:00 AM</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="time-slot" value="11:00-12:00" class="mr-2">
+                                <span class="ml-2 text-sm">11:00 AM - 12:00 PM</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="time-slot" value="12:00-13:00" class="mr-2">
+                                <span class="ml-2 text-sm">12:00 PM - 1:00 PM</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="time-slot" value="14:00-15:00" class="mr-2">
+                                <span class="ml-2 text-sm">2:00 PM - 3:00 PM</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="time-slot" value="15:00-16:00" class="mr-2">
+                                <span class="ml-2 text-sm">3:00 PM - 4:00 PM</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="time-slot" value="16:00-17:00" class="mr-2">
+                                <span class="ml-2 text-sm">4:00 PM - 5:00 PM</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="time-slot" value="17:00-18:00" class="mr-2">
+                                <span class="ml-2 text-sm">5:00 PM - 6:00 PM</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4">
+                        <button onclick="closeTimeSlotModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button onclick="saveTimeSlots()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            Save Availability
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1156,6 +1283,196 @@ function updateTestsList() {
 function removeTestFromList(index) {
     pendingTests.splice(index, 1);
     updateTestsList();
+}
+
+var currentCalendarDate = new Date();
+var selectedDate = null;
+var doctorSchedule = {};
+
+function openCalendar() {
+    document.getElementById('doctorCalendarModal').classList.remove('hidden');
+    loadDoctorSchedule();
+    renderCalendar();
+}
+
+function closeDoctorCalendar() {
+    document.getElementById('doctorCalendarModal').classList.add('hidden');
+}
+
+function previousMonth() {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+    renderCalendar();
+}
+
+function nextMonth() {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+    renderCalendar();
+}
+
+function renderCalendar() {
+    var year = currentCalendarDate.getFullYear();
+    var month = currentCalendarDate.getMonth();
+    
+    document.getElementById('currentMonthYear').textContent = 
+        currentCalendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    
+    var firstDay = new Date(year, month, 1);
+    var lastDay = new Date(year, month + 1, 0);
+    var startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    
+    var calendarGrid = document.getElementById('calendarGrid');
+    calendarGrid.innerHTML = '';
+    
+    for (var i = 0; i < 42; i++) {
+        var currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+        
+        var dayElement = document.createElement('div');
+        dayElement.className = 'p-3 text-center border border-gray-200 cursor-pointer hover:bg-gray-50 min-h-[80px] flex flex-col justify-between';
+        
+        var isCurrentMonth = currentDate.getMonth() === month;
+        var isToday = currentDate.toDateString() === new Date().toDateString();
+        var isPast = currentDate < new Date().setHours(0,0,0,0);
+        var dateKey = currentDate.toISOString().split('T')[0];
+        var hasSchedule = doctorSchedule[dateKey] && doctorSchedule[dateKey].length > 0;
+        
+        if (!isCurrentMonth) {
+            dayElement.className += ' text-gray-400 bg-gray-50';
+        } else if (isPast) {
+            dayElement.className += ' text-gray-400 cursor-not-allowed';
+        } else if (isToday) {
+            dayElement.className += ' bg-blue-100 text-blue-800 font-semibold';
+        }
+        
+        if (hasSchedule && isCurrentMonth && !isPast) {
+            dayElement.className += ' bg-green-200 text-green-800';
+        }
+        
+        var timeSlotDisplay = '';
+        if (hasSchedule && doctorSchedule[dateKey]) {
+            var slots = doctorSchedule[dateKey];
+            if (slots.length <= 2) {
+                timeSlotDisplay = slots.map(function(slot) {
+                    return '<div class="text-xs">' + formatTimeSlot(slot) + '</div>';
+                }).join('');
+            } else {
+                timeSlotDisplay = '<div class="text-xs">' + slots.length + ' slots</div>';
+            }
+        }
+        
+        dayElement.innerHTML = 
+            '<div class="font-medium">' + currentDate.getDate() + '</div>' +
+            '<div class="flex-1 flex flex-col justify-center">' + timeSlotDisplay + '</div>';
+        
+        if (isCurrentMonth && !isPast) {
+            dayElement.onclick = function(date) {
+                return function() { openTimeSlotModal(date); };
+            }(new Date(currentDate));
+        }
+        
+        calendarGrid.appendChild(dayElement);
+    }
+}
+
+function formatTimeSlot(slot) {
+    var times = slot.split('-');
+    var startTime = times[0];
+    var endTime = times[1];
+    
+    function formatTime(time) {
+        var hour = parseInt(time.split(':')[0]);
+        var minute = time.split(':')[1];
+        var ampm = hour >= 12 ? 'PM' : 'AM';
+        hour = hour % 12;
+        hour = hour ? hour : 12;
+        return hour + ':' + minute + ' ' + ampm;
+    }
+    
+    return formatTime(startTime) + ' - ' + formatTime(endTime);
+}
+
+function openTimeSlotModal(date) {
+    selectedDate = date;
+    var dateKey = date.toISOString().split('T')[0];
+    
+    document.getElementById('selectedDateDisplay').textContent = 
+        date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    
+    // Clear all checkboxes
+    document.querySelectorAll('.time-slot').forEach(function(checkbox) {
+        checkbox.checked = false;
+    });
+    
+    // Check existing time slots
+    if (doctorSchedule[dateKey]) {
+        doctorSchedule[dateKey].forEach(function(timeSlot) {
+            var checkbox = document.querySelector('.time-slot[value="' + timeSlot + '"]');
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+        });
+    }
+    
+    document.getElementById('timeSlotModal').classList.remove('hidden');
+}
+
+function closeTimeSlotModal() {
+    document.getElementById('timeSlotModal').classList.add('hidden');
+    selectedDate = null;
+}
+
+function saveTimeSlots() {
+    if (!selectedDate) return;
+    
+    var selectedSlots = [];
+    document.querySelectorAll('.time-slot:checked').forEach(function(checkbox) {
+        selectedSlots.push(checkbox.value);
+    });
+    
+    var dateKey = selectedDate.toISOString().split('T')[0];
+    
+    fetch('/api/doctor/schedule', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            date: dateKey,
+            time_slots: selectedSlots
+        })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            doctorSchedule[dateKey] = selectedSlots;
+            renderCalendar();
+            closeTimeSlotModal();
+            alert('Schedule updated successfully!');
+        } else {
+            alert('Error saving schedule: ' + data.message);
+        }
+    })
+    .catch(function(error) {
+        alert('Error saving schedule');
+    });
+}
+
+function loadDoctorSchedule() {
+    var year = currentCalendarDate.getFullYear();
+    var month = currentCalendarDate.getMonth() + 1;
+    
+    fetch('/api/doctor/schedule?year=' + year + '&month=' + month)
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                doctorSchedule = data.schedule || {};
+                renderCalendar();
+            }
+        })
+        .catch(function(error) {
+            console.error('Error loading schedule:', error);
+        });
 }
 </script>
 

@@ -11,7 +11,6 @@ import logging
 import re
 import base64
 import mimetypes
-import os
 from dotenv import load_dotenv
 
 app = Flask(__name__)
@@ -692,7 +691,7 @@ def search_patients_by_phone():
                 if isinstance(patient['date_of_birth'], datetime):
                     age = today.year - patient['date_of_birth'].year
                     if today.month < patient['date_of_birth'].month or \
-                       (today.month == patient['date_of_birth'].month and today.day < patient['date_of_birth'].day):
+                       (today.month == today.month and today.day < patient['date_of_birth'].day):
                         age -= 1
                 else:
                     age = 0
@@ -777,7 +776,7 @@ def search_patients_by_name():
                 if isinstance(patient['date_of_birth'], datetime):
                     age = today.year - patient['date_of_birth'].year
                     if today.month < patient['date_of_birth'].month or \
-                       (today.month == patient['date_of_birth'].month and today.day < patient['date_of_birth'].day):
+                       (today.month == today.month and today.day < patient['date_of_birth'].day):
                         age -= 1
                 else:
                     age = 0
@@ -2081,7 +2080,7 @@ def get_patients_list():
                 if isinstance(patient['date_of_birth'], datetime):
                     age = today.year - patient['date_of_birth'].year
                     if today.month < patient['date_of_birth'].month or \
-                       (today.month == patient['date_of_birth'].month and today.day < patient['date_of_birth'].day):
+                       (today.month == today.month and today.day < patient['date_of_birth'].day):
                         age -= 1
                 else:
                     age = 0
@@ -3102,6 +3101,125 @@ def get_doctor_statistics():
         
     except Exception as e:
         print(f"Statistics error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/doctor/schedule', methods=['GET', 'POST'])
+@role_required('doctor')
+def doctor_schedule():
+    try:
+        doctor_user_id = session.get('user_id')
+        doctor = mongo.db.doctor.find_one({'_id': ObjectId(doctor_user_id)})
+        
+        if not doctor:
+            return jsonify({'success': False, 'message': 'Doctor not found'})
+        
+        doctor_id = doctor['_id']
+        print(f"[v0] Doctor schedule - doctor_user_id: {doctor_user_id}, doctor_id: {doctor_id}")
+        
+        if request.method == 'GET':
+            # Get doctor's schedule for a specific month/year
+            year = int(request.args.get('year', datetime.now().year))
+            month = int(request.args.get('month', datetime.now().month))
+            
+            # Get all schedules for the month
+            start_date = datetime(year, month, 1)
+            if month == 12:
+                end_date = datetime(year + 1, 1, 1)
+            else:
+                end_date = datetime(year, month + 1, 1)
+            
+            schedules = list(mongo.db.doctor_schedule.find({
+                'doctor_id': doctor_id,
+                'date': {'$gte': start_date.strftime('%Y-%m-%d'), '$lt': end_date.strftime('%Y-%m-%d')}
+            }))
+            
+            print(f"[v0] Doctor schedule GET - Found {len(schedules)} schedules for doctor {doctor_id}")
+            
+            # Format schedule data
+            schedule_dict = {}
+            for schedule in schedules:
+                schedule_dict[schedule['date']] = schedule['time_slots']
+            
+            return jsonify({'success': True, 'schedule': schedule_dict})
+        
+        elif request.method == 'POST':
+            # Save/update doctor's schedule for a specific date
+            data = request.get_json()
+            date = data.get('date')
+            time_slots = data.get('time_slots', [])
+            
+            if not date:
+                return jsonify({'success': False, 'message': 'Date is required'})
+            
+            print(f"[v0] Doctor schedule POST - Saving schedule for doctor {doctor_id}, date {date}, slots: {time_slots}")
+            
+            # Update or insert schedule
+            result = mongo.db.doctor_schedule.update_one(
+                {'doctor_id': doctor_id, 'date': date},
+                {
+                    '$set': {
+                        'doctor_id': doctor_id,
+                        'date': date,
+                        'time_slots': time_slots,
+                        'updated_at': datetime.now()
+                    }
+                },
+                upsert=True
+            )
+            
+            print(f"[v0] Doctor schedule POST - Update result: matched={result.matched_count}, modified={result.modified_count}, upserted={result.upserted_id}")
+            
+            return jsonify({'success': True, 'message': 'Schedule updated successfully'})
+            
+    except Exception as e:
+        print(f"Doctor schedule error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/admin/doctor-schedule')
+@role_required('admin')
+def admin_doctor_schedule():
+    doctor_id = request.args.get('doctor_id')
+    doctor_name = request.args.get('doctor_name')
+    
+    if not doctor_id:
+        return redirect(url_for('admin_dashboard'))
+    
+    return render_template('admin_doctor_schedule.html', doctor_id=doctor_id, doctor_name=doctor_name)
+
+@app.route('/api/admin/doctor/<doctor_id>/schedule')
+@role_required('admin')
+def get_doctor_schedule_admin(doctor_id):  # Added doctor_id parameter to fix TypeError
+    try:
+        year = int(request.args.get('year', datetime.now().year))
+        month = int(request.args.get('month', datetime.now().month))
+        
+        print(f"[v0] Admin doctor schedule - Querying for doctor_id: {doctor_id}, year: {year}, month: {month}")
+        
+        # Get all schedules for the month
+        start_date = datetime(year, month, 1)
+        if month == 12:
+            end_date = datetime(year + 1, 1, 1)
+        else:
+            end_date = datetime(year, month + 1, 1)
+        
+        schedules = list(mongo.db.doctor_schedule.find({
+            'doctor_id': ObjectId(doctor_id),
+            'date': {'$gte': start_date.strftime('%Y-%m-%d'), '$lt': end_date.strftime('%Y-%m-%d')}
+        }))
+        
+        print(f"[v0] Admin doctor schedule - Found {len(schedules)} schedules")
+        for schedule in schedules:
+            print(f"[v0] Schedule: {schedule}")
+        
+        # Format schedule data
+        schedule_dict = {}
+        for schedule in schedules:
+            schedule_dict[schedule['date']] = schedule['time_slots']
+        
+        return jsonify({'success': True, 'schedule': schedule_dict})
+        
+    except Exception as e:
+        print(f"Admin doctor schedule error: {str(e)}")
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/api/doctor/profile/update', methods=['PUT'])
