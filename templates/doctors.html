@@ -18,10 +18,10 @@
                         <span class="ml-4 text-sm text-gray-500">Doctor Selection</span>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <span class="text-sm text-gray-600">Welcome, {{ session.username }}</span>
-                        <a href="/logout" class="text-red-600 hover:text-red-800">
-                            <i class="fas fa-sign-out-alt"></i> Logout
-                        </a>
+                        <span class="text-sm text-gray-600">{{ session.username }}</span>
+                        <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </button>
                     </div>
                 </div>
             </div>
@@ -167,6 +167,24 @@
         document.addEventListener('DOMContentLoaded', () => {
             new DoctorSelection();
         });
+
+        async function logout() {
+            try {
+                const response = await fetch('/api/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                alert('Error logging out');
+            }
+        }
     </script>
 </body>
 </html>

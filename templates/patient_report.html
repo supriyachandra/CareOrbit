@@ -8,7 +8,7 @@
     <header class="bg-white shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-4">
-                <div class="flex items-center">
+                <div>
                     <i class="fas fa-file-medical text-2xl text-blue-600 mr-3"></i>
                     <h1 class="text-2xl font-bold text-gray-900">Patient Report</h1>
                 </div>
@@ -287,7 +287,7 @@ class PatientReport {
             var statusColor = this.getStatusColor(visit.status);
             var visitDate = new Date(visit.visit_date);
             
-            html += '<div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="patientReport.showVisitDetails(\'' + visit.visit_id + '\')">';
+            html += '<div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">';
             html += '<div class="flex justify-between items-start mb-3">';
             html += '<div class="flex items-center space-x-4">';
             html += '<div class="flex-shrink-0">';
@@ -316,11 +316,23 @@ class PatientReport {
             }
             
             if (visit.tests_ordered && visit.tests_ordered.length > 0) {
-                html += '<div class="mb-2"><strong class="text-sm text-gray-700">Tests:</strong> <span class="text-sm text-gray-600">' + visit.tests_ordered.length + ' test(s) ordered</span></div>';
+                html += '<div class="mb-2"><strong class="text-sm text-gray-700">Tests Ordered:</strong> <span class="text-sm text-gray-600">' + visit.tests_ordered.join(', ') + '</span></div>';
+            }
+            
+            if (visit.vital_signs) {
+                html += '<div class="mb-2"><strong class="text-sm text-gray-700">Vital Signs:</strong> <span class="text-sm text-gray-600">' + visit.vital_signs + '</span></div>';
+            }
+            
+            if (visit.treatment_notes) {
+                html += '<div class="mb-2"><strong class="text-sm text-gray-700">Treatment Notes:</strong> <span class="text-sm text-gray-600">' + visit.treatment_notes.substring(0, 100) + (visit.treatment_notes.length > 100 ? '...' : '') + '</span></div>';
+            }
+            
+            if (visit.lab_results) {
+                html += '<div class="mb-2"><strong class="text-sm text-gray-700">Lab Results:</strong> <span class="text-sm text-gray-600">' + (visit.lab_results === 'pending' ? 'Pending' : 'Available') + '</span></div>';
             }
             
             html += '<div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">';
-            html += '<div class="text-xs text-gray-500">Click to view full details</div>';
+            html += '<div class="text-xs text-gray-500">Visit completed on ' + this.formatDate(visit.visit_date) + '</div>';
             if (visit.follow_up_date) {
                 html += '<div class="text-xs text-blue-600"><i class="fas fa-calendar-check mr-1"></i>Follow-up: ' + this.formatDate(visit.follow_up_date) + '</div>';
             }

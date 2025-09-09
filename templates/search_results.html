@@ -16,8 +16,9 @@
                     <h1 class="text-2xl font-bold text-gray-900">Patient Search Results</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-600">Welcome, {{ current_user.name if current_user.is_authenticated else 'Admin' }}</span>
-                    <button onclick="logout()" class="logout-btn bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                    <!-- Removed "Welcome," text -->
+                    <span class="text-sm text-gray-600">{{ current_user.name if current_user.is_authenticated else 'Admin' }}</span>
+                    <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
                     </button>
                 </div>

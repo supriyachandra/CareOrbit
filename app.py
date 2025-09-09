@@ -11,9 +11,12 @@ import logging
 import re
 import base64
 import mimetypes
+import os
+from dotenv import load_dotenv
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
+load_dotenv()  # Load variables from .env
+app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "dev-secret-key")
 app.config["MONGO_URI"] = "mongodb://localhost:27017/careorbit_db"
 
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -1110,6 +1113,41 @@ def update_doctor(doctor_id):
     except Exception as e:
         return jsonify({'success': False, 'message': f'Update error: {str(e)}'})
 
+@app.route('/api/doctor/<doctor_id>/change-password', methods=['PUT'])
+@role_required('admin')
+def admin_change_doctor_password(doctor_id):
+    try:
+        data = request.get_json()
+        new_password = data.get('password')
+        
+        if not new_password:
+            return jsonify({'success': False, 'message': 'New password is required'})
+        
+        # Check if doctor exists
+        doctor = mongo.db.doctor.find_one({'_id': ObjectId(doctor_id)})
+        if not doctor:
+            return jsonify({'success': False, 'message': 'Doctor not found'})
+        
+        # Update password
+        hashed_password = generate_password_hash(new_password)
+        result = mongo.db.doctor.update_one(
+            {'_id': ObjectId(doctor_id)},
+            {'$set': {
+                'password_hash': hashed_password,
+                'password': hashed_password,  # Update both fields for compatibility
+                'updated_at': datetime.now()
+            }}
+        )
+        
+        if result.modified_count > 0:
+            return jsonify({'success': True, 'message': 'Password changed successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to update password'})
+            
+    except Exception as e:
+        print(f"Admin password change error: {str(e)}")
+        return jsonify({'success': False, 'message': 'Error changing password'})
+
 @app.route('/api/doctor/change-password', methods=['PUT'])
 @role_required('doctor')
 def doctor_change_password():
@@ -1528,7 +1566,7 @@ def get_visit_details(visit_id):
             },
             'doctor': {
                 'name': doctor['name'] if doctor else 'Unknown',
-                'department': doctor['department'] if doctor else 'Unknown'
+                'department': doctor.get('department', 'Unknown') if doctor else 'Unknown'
             },
             'department_name': department['department_name'] if department else 'Unknown',
             'reason_for_visit': visit.get('reason_for_visit', ''),
