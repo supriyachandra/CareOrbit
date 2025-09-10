@@ -9,7 +9,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center">
-                    <!-- Added circular profile button at top left next to Doctor Dashboard text -->
+                    <!-- Added profile button to Doctor Dashboard -->
                     <button onclick="window.location.href='/doctor/profile'" 
                             class="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors mr-4 shadow-sm">
                         <i class="fas fa-user-md text-sm"></i>
@@ -20,11 +20,10 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <!-- Removed the old profile button from right side -->
                     <button onclick="showPastPatients()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
                         <i class="fas fa-history mr-2"></i>Past Patients
                     </button>
-                    <!-- Added calendar button before logout -->
+                    <!-- Added calendar button-->
                     <button onclick="openCalendar()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
                         <i class="fas fa-calendar-alt mr-2"></i>Schedule
                     </button>
@@ -112,7 +111,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white divide-y divide-gray-200"  id="patientsTableBody">
                         {% for patient in patients %}
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -143,7 +142,7 @@
                                 <div class="text-sm text-gray-900">{{ patient.reason_for_visit }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full status-badge
                                     {% if patient.status == 'completed' %}bg-green-100 text-green-800
                                     {% elif patient.status == 'in_progress' %}bg-yellow-100 text-yellow-800
                                     {% else %}bg-blue-100 text-blue-800{% endif %}">
@@ -224,7 +223,7 @@
                             <textarea id="medications" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="List medications with dosage and frequency..."></textarea>
                         </div>
 
-                        <!-- Enhanced medical tests section with multiple selection -->
+                        <!-- Medical tests section with multiple selection -->
                         <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
                             <h4 class="text-md font-medium text-gray-900 mb-3">Medical Tests (Optional)</h4>
                             <div class="grid md:grid-cols-2 gap-4 mb-4">
@@ -255,7 +254,7 @@
                             <div id="addedTestsList" class="mt-3 space-y-2"></div>
                         </div>
 
-                        <!-- Added file upload section for images/PDFs -->
+                        <!-- File upload section for images/PDFs -->
                         <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
                             <h4 class="text-md font-medium text-gray-900 mb-3">Attachments (Optional)</h4>
                             <div class="mb-4">
@@ -1073,9 +1072,28 @@ function closePastPatientsModal() {
 function updateDemographics() {
     var completedCount = 0;
     var pendingCount = 0;
+    var inProgressCount = 0;
     
+    // Count patients by status from the table rows
+    var patientRows = document.querySelectorAll('#patientsTableBody tr');
+    patientRows.forEach(function(row) {
+        var statusElement = row.querySelector('.status-badge');
+        if (statusElement) {
+            var statusText = statusElement.textContent.trim().toLowerCase();
+            if (statusText === 'completed') {
+                completedCount++;
+            } else if (statusText === 'pending' || statusText === 'assigned') {
+                pendingCount++;
+            } else if (statusText === 'in progress' || statusText === 'in_progress') {
+                inProgressCount++;
+            }
+        }
+    });
+    
+
     document.getElementById('completedCount').textContent = completedCount;
     document.getElementById('pendingCount').textContent = pendingCount;
+    document.getElementById('inProgressCount').textContent = inProgressCount;
 }
 
 function filterPatients() {
@@ -1184,8 +1202,8 @@ document.getElementById('prescriptionForm').addEventListener('submit', function(
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    loadTestTypes();
     updateDemographics();
+    loadTestTypes();
 });
 
 function loadTestTypes() {

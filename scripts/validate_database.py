@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Database Validation Script for Tests Module
-Validates the database schema and indexes for the new tests functionality.
-"""
+
 
 import sys
 import os

@@ -1,0 +1,85 @@
+{
+  "timestamp": "2025-09-10T23:33:50.595923",
+  "total_checks": 13,
+  "passed_checks": 5,
+  "results": [
+    {
+      "check": "Collection 'tests' exists",
+      "success": false,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.561342"
+    },
+    {
+      "check": "Collection 'test_results' exists",
+      "success": false,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.561470"
+    },
+    {
+      "check": "Index on 'tests.patient_id'",
+      "success": false,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.565057"
+    },
+    {
+      "check": "Index on 'tests.visit_id'",
+      "success": false,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.565157"
+    },
+    {
+      "check": "Index on 'tests.doctor_id'",
+      "success": false,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.565206"
+    },
+    {
+      "check": "Index on 'tests.created_at'",
+      "success": false,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.565260"
+    },
+    {
+      "check": "Index on 'test_results.test_id'",
+      "success": false,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.566018"
+    },
+    {
+      "check": "Index on 'test_results.created_at'",
+      "success": false,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.566113"
+    },
+    {
+      "check": "Insert Operation",
+      "success": true,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.581725"
+    },
+    {
+      "check": "Find Operation",
+      "success": true,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.582980"
+    },
+    {
+      "check": "Update Operation",
+      "success": true,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.587304"
+    },
+    {
+      "check": "Delete Operation",
+      "success": true,
+      "message": "",
+      "timestamp": "2025-09-10T23:33:50.592656"
+    },
+    {
+      "check": "Data Integrity",
+      "success": true,
+      "message": "Found 0 orphaned test results",
+      "timestamp": "2025-09-10T23:33:50.594640"
+    }
+  ]
+}

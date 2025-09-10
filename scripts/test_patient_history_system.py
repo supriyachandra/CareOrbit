@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Comprehensive Test Script for Patient History System
-Tests all functionality including database operations, API endpoints, and data integrity
-"""
+
 
 import sys
 import os

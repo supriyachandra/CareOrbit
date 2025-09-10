@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Integration Test Script for Hospital Management System - Tests Module
-Tests all the new tests functionality including database operations, API endpoints, and file uploads.
-"""
 
 import requests
 import json

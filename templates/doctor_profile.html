@@ -321,7 +321,7 @@ class DoctorProfile {
     }
 
     showFallbackProfile() {
-        // Show basic profile with loading states replaced by "Not available"
+        // Show basic profile with loading states
         document.getElementById('doctorName').textContent = 'Profile Loading Error';
         document.getElementById('doctorDepartment').textContent = 'Please refresh the page';
         document.getElementById('doctorUsername').textContent = '@error';
@@ -364,7 +364,7 @@ class DoctorProfile {
             
             if (!response.ok) {
                 console.warn('[v0] Statistics API failed, using defaults');
-                return; // Don't throw error, just use default values
+                return;
             }
             
             const data = await response.json();
@@ -385,7 +385,6 @@ class DoctorProfile {
             }
         } catch (error) {
             console.error('[v0] Error loading statistics:', error);
-            // Don't show error alert for statistics, just keep default values
         }
     }
 
@@ -438,7 +437,7 @@ class DoctorProfile {
             if (data.success) {
                 showAlert('Profile updated successfully', 'success');
                 this.closeEditProfileModal();
-                this.loadProfile(); // Reload to show updated data
+                this.loadProfile();
             } else {
                 showAlert(data.message || 'Error updating profile', 'error');
             }

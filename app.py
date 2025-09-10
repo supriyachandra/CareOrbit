@@ -12,11 +12,53 @@ import re
 import base64
 import mimetypes
 from dotenv import load_dotenv
+import sys
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
 
 app = Flask(__name__)
 load_dotenv()  # Load variables from .env
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "dev-secret-key")
 app.config["MONGO_URI"] = "mongodb://localhost:27017/careorbit_db"
+
+
+
+from flask import request, redirect, url_for, flash, render_template
+from flask_login import login_required, current_user
+from app.utils.sms import send_appointment_sms
+
+@app.route("/admin/send-sms", methods=["GET", "POST"])
+@login_required
+def send_sms():
+    if request.method == "POST":
+        to_number    = request.form.get("to_number", "").strip()
+        patient_name = request.form.get("patient_name", "").strip()
+        queue_no     = request.form.get("queue_no", "").strip()
+        doctor_name  = getattr(current_user, "full_name", "Doctor")
+        appt_time    = request.form.get("appt_time", "").strip() or None
+
+        if not (to_number and queue_no):
+            flash(" Please enter at least mobile number and queue no.", "warning")
+            return redirect(url_for("send_sms"))
+
+        try:
+            sid = send_appointment_sms(
+                to_number=to_number,
+                patient_name=patient_name,
+                doctor_name=doctor_name,
+                queue_no=queue_no,
+                appt_time=appt_time
+            )
+            flash(f"✅ SMS sent successfully (SID: {sid})", "success")
+        except Exception as e:
+            flash(f"❌ SMS failed: {e}", "danger")
+
+        return redirect(url_for("send_sms"))
+
+    # GET request → show form
+    return render_template("admin/send_sms.html", default_doc=getattr(current_user, "full_name", "Doctor"))
+
 
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['UPLOAD_FOLDER'] = 'uploads/test_results'
